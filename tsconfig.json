@@ -11,6 +11,12 @@
     },
     {
       "path": "./apps/e2e-tests"
+    },
+    {
+      "path": "./libs/cypress-plugin"
+    },
+    {
+      "path": "./apps/cypress-e2e"
     }
   ]
 }

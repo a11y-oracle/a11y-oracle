@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "types": ["cypress"],
+    "emitDeclarationOnly": false
+  },
+  "include": ["src/**/*.ts", "cypress.config.ts"],
+  "references": [
+    {
+      "path": "../../libs/cypress-plugin"
+    }
+  ]
+}

@@ -1,0 +1,317 @@
+/**
+ * @module commands
+ *
+ * Custom Cypress commands for accessibility speech testing.
+ *
+ * Uses `Cypress.automation('remote:debugger:protocol')` to communicate
+ * with Chrome DevTools Protocol directly through Cypress's own CDP
+ * connection — no external libraries or Node-side tasks required.
+ *
+ * This is the same proven pattern used by cypress-real-events.
+ *
+ * ## Cypress iframe architecture
+ *
+ * Cypress runs the AUT (app under test) inside an iframe within
+ * its runner page. This module handles:
+ * - Scoping accessibility tree queries to the AUT frame via `frameId`
+ * - Focusing the AUT iframe before dispatching keyboard events
+ *
+ * @example
+ * ```typescript
+ * // In your test:
+ * cy.initA11yOracle();
+ * cy.a11yPress('Tab').should('contain', 'Home');
+ * cy.disposeA11yOracle();
+ * ```
+ */
+
+import { SpeechEngine } from '@a11y-oracle/core-engine';
+import type {
+  CDPSessionLike,
+  SpeechResult,
+  SpeechEngineOptions,
+} from '@a11y-oracle/core-engine';
+import { KEY_DEFINITIONS } from './key-map.js';
+
+// ── Type declarations ──────────────────────────────────────────────
+
+declare global {
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * Initialize A11y-Oracle. Must be called before other a11y commands.
+       * Typically called in `beforeEach()`.
+       */
+      initA11yOracle(options?: SpeechEngineOptions): Chainable<null>;
+
+      /**
+       * Press a keyboard key via CDP and return the speech for the
+       * newly focused element.
+       *
+       * @param key - Key name (e.g. `'Tab'`, `'Enter'`, `'ArrowDown'`).
+       */
+      a11yPress(key: string): Chainable<string>;
+
+      /** Get the speech string for the currently focused element. */
+      getA11ySpeech(): Chainable<string>;
+
+      /** Get the full {@link SpeechResult} for the currently focused element. */
+      getA11ySpeechResult(): Chainable<SpeechResult | null>;
+
+      /** Get speech output for every visible node in the accessibility tree. */
+      getA11yFullTreeSpeech(): Chainable<SpeechResult[]>;
+
+      /**
+       * Dispose A11y-Oracle and release resources.
+       * Typically called in `afterEach()`.
+       */
+      disposeA11yOracle(): Chainable<null>;
+    }
+  }
+}
+
+// ── Internals ──────────────────────────────────────────────────────
+
+let engine: SpeechEngine | null = null;
+let autFrameId: string | null = null;
+
+/**
+ * Send a raw CDP command through Cypress's automation channel.
+ */
+function sendCDP(
+  command: string,
+  params: Record<string, unknown> = {}
+): Promise<any> {
+  return (Cypress as any).automation('remote:debugger:protocol', {
+    command,
+    params,
+  });
+}
+
+/**
+ * Create a {@link CDPSessionLike} adapter that routes CDP calls through
+ * Cypress's built-in `remote:debugger:protocol` automation channel.
+ *
+ * Automatically injects the AUT iframe's `frameId` into
+ * `Accessibility.getFullAXTree` calls so the tree is scoped
+ * to the app under test, not the Cypress runner UI.
+ */
+function createFrameAwareCDPAdapter(): CDPSessionLike {
+  return {
+    send: (method: string, params?: Record<string, unknown>) => {
+      const p = { ...params };
+      if (method === 'Accessibility.getFullAXTree' && autFrameId) {
+        p['frameId'] = autFrameId;
+      }
+      return sendCDP(method, p);
+    },
+  };
+}
+
+/**
+ * Discover the AUT (app under test) iframe's frame ID
+ * from the Cypress runner page's frame tree.
+ *
+ * The AUT frame is identified by having a URL that doesn't
+ * contain `/__/` (runner), `__cypress` (spec iframe), or
+ * `about:blank` (snapshot frames).
+ */
+async function findAUTFrameId(): Promise<string | null> {
+  const result = await sendCDP('Page.getFrameTree');
+  const childFrames = result.frameTree.childFrames || [];
+
+  for (const child of childFrames) {
+    const url: string = child.frame.url || '';
+    if (
+      url &&
+      !url.includes('/__/') &&
+      !url.includes('__cypress') &&
+      url !== 'about:blank'
+    ) {
+      return child.frame.id;
+    }
+  }
+
+  // Fallback: first child frame with a non-blank URL
+  for (const child of childFrames) {
+    if (child.frame.url && child.frame.url !== 'about:blank') {
+      return child.frame.id;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Focus the AUT iframe element so that CDP keyboard events
+ * reach the AUT's content instead of the Cypress runner UI.
+ */
+async function focusAUTFrame(): Promise<void> {
+  // Get the runner page's document
+  const doc = await sendCDP('DOM.getDocument', { depth: 0 });
+
+  // Find all iframes and focus the AUT one
+  const iframes = await sendCDP('DOM.querySelectorAll', {
+    nodeId: doc.root.nodeId,
+    selector: 'iframe',
+  });
+
+  for (const nodeId of iframes.nodeIds) {
+    try {
+      const attrs = await sendCDP('DOM.getAttributes', { nodeId });
+      const attrList: string[] = attrs.attributes;
+
+      // Find the iframe whose src matches the AUT URL
+      const srcIndex = attrList.indexOf('src');
+      if (srcIndex >= 0) {
+        const src = attrList[srcIndex + 1];
+        if (
+          src &&
+          !src.includes('/__/') &&
+          !src.includes('__cypress') &&
+          src !== 'about:blank'
+        ) {
+          await sendCDP('DOM.focus', { nodeId });
+          return;
+        }
+      }
+
+      // Also check by name attribute (Cypress names AUT frames)
+      const nameIndex = attrList.indexOf('name');
+      if (nameIndex >= 0) {
+        const name = attrList[nameIndex + 1];
+        if (name && name.startsWith('Your project:')) {
+          await sendCDP('DOM.focus', { nodeId });
+          return;
+        }
+      }
+    } catch {
+      // Skip iframes we can't inspect
+    }
+  }
+}
+
+/**
+ * Dispatch a real keyboard event (keyDown + keyUp) via CDP.
+ */
+async function dispatchKey(key: string): Promise<void> {
+  const keyDef = KEY_DEFINITIONS[key];
+  if (!keyDef) {
+    const supported = Object.keys(KEY_DEFINITIONS).join(', ');
+    throw new Error(
+      `Unknown key: "${key}". Supported keys: ${supported}`
+    );
+  }
+
+  // Ensure the AUT iframe has focus before each key dispatch
+  await focusAUTFrame();
+
+  await sendCDP('Input.dispatchKeyEvent', {
+    type: 'keyDown',
+    key: keyDef.key,
+    code: keyDef.code,
+    windowsVirtualKeyCode: keyDef.keyCode,
+    nativeVirtualKeyCode: keyDef.keyCode,
+  });
+
+  await sendCDP('Input.dispatchKeyEvent', {
+    type: 'keyUp',
+    key: keyDef.key,
+    code: keyDef.code,
+    windowsVirtualKeyCode: keyDef.keyCode,
+    nativeVirtualKeyCode: keyDef.keyCode,
+  });
+}
+
+// ── Commands ───────────────────────────────────────────────────────
+
+Cypress.Commands.add(
+  'initA11yOracle',
+  (options?: SpeechEngineOptions) => {
+    cy.wrap(null, { log: false }).then(async () => {
+      // Enable required CDP domains
+      await sendCDP('DOM.enable');
+      await sendCDP('Page.enable');
+
+      // Discover the AUT frame
+      autFrameId = await findAUTFrameId();
+      if (!autFrameId) {
+        throw new Error(
+          'A11y-Oracle: Could not find the AUT iframe. ' +
+            'Ensure cy.visit() was called before cy.initA11yOracle().'
+        );
+      }
+
+      // Focus the AUT iframe so key events reach it
+      await focusAUTFrame();
+
+      // Create the speech engine scoped to the AUT frame
+      engine = new SpeechEngine(createFrameAwareCDPAdapter(), options);
+      await engine.enable();
+      return null;
+    });
+  }
+);
+
+Cypress.Commands.add('a11yPress', (key: string) => {
+  cy.wrap(null, { log: false }).then(async () => {
+    if (!engine) {
+      throw new Error(
+        'A11y-Oracle not initialized. Call cy.initA11yOracle() first.'
+      );
+    }
+
+    await dispatchKey(key);
+
+    // Allow browser to update focus and ARIA states
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const result = await engine.getSpeech();
+    return result?.speech ?? '';
+  });
+});
+
+Cypress.Commands.add('getA11ySpeech', () => {
+  cy.wrap(null, { log: false }).then(async () => {
+    if (!engine) {
+      throw new Error(
+        'A11y-Oracle not initialized. Call cy.initA11yOracle() first.'
+      );
+    }
+    const result = await engine.getSpeech();
+    return result?.speech ?? '';
+  });
+});
+
+Cypress.Commands.add('getA11ySpeechResult', () => {
+  cy.wrap(null, { log: false }).then(async () => {
+    if (!engine) {
+      throw new Error(
+        'A11y-Oracle not initialized. Call cy.initA11yOracle() first.'
+      );
+    }
+    return (await engine.getSpeech()) ?? null;
+  });
+});
+
+Cypress.Commands.add('getA11yFullTreeSpeech', () => {
+  cy.wrap(null, { log: false }).then(async () => {
+    if (!engine) {
+      throw new Error(
+        'A11y-Oracle not initialized. Call cy.initA11yOracle() first.'
+      );
+    }
+    return engine.getFullTreeSpeech();
+  });
+});
+
+Cypress.Commands.add('disposeA11yOracle', () => {
+  cy.wrap(null, { log: false }).then(async () => {
+    if (engine) {
+      await engine.disable();
+      engine = null;
+    }
+    autFrameId = null;
+    return null;
+  });
+});

@@ -1,0 +1,14 @@
+{
+  "name": "cypress-e2e",
+  "projectType": "application",
+  "sourceRoot": "apps/cypress-e2e/src",
+  "targets": {
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx http-server apps/sandbox/src -p 4201 -c-1 --silent & SERVER_PID=$!; sleep 2; npx cypress run --project apps/cypress-e2e --browser chrome; EXIT=$?; kill $SERVER_PID 2>/dev/null; exit $EXIT"
+      },
+      "dependsOn": ["^build"]
+    }
+  }
+}
