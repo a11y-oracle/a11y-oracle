@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dropdown Navigation Menu - A11y-Oracle Sandbox</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!--
+    WAI-ARIA Menubar Pattern
+    Reference: https://www.w3.org/WAI/ARIA/apg/patterns/menubar/
+
+    Expected speech outputs:
+      Tab to "Products" button  → "Products, button, collapsed"
+      Enter on "Products"       → focus moves to first submenu item
+      Arrow Down in submenu     → "Shoes, link" / "Accessories, link"
+      Escape from submenu       → "Products, button, collapsed"
+      Nav landmark              → "Main, navigation landmark"
+  -->
+  <nav aria-label="Main" class="menubar-nav">
+    <ul role="menubar" aria-label="Main" class="menubar">
+
+      <!-- Top-level link (no submenu) -->
+      <li role="none">
+        <a href="#home" role="menuitem" class="menubar-item">Home</a>
+      </li>
+
+      <!-- Products - has submenu -->
+      <li role="none">
+        <button
+          role="menuitem"
+          aria-haspopup="true"
+          aria-expanded="false"
+          class="menubar-item"
+          data-menu-trigger
+        >
+          Products
+        </button>
+        <ul role="menu" aria-label="Products" class="submenu">
+          <li role="none">
+            <a href="#clothing" role="menuitem" class="submenu-item">Clothing</a>
+          </li>
+          <li role="none">
+            <a href="#shoes" role="menuitem" class="submenu-item">Shoes</a>
+          </li>
+          <li role="none">
+            <a href="#accessories" role="menuitem" class="submenu-item">Accessories</a>
+          </li>
+        </ul>
+      </li>
+
+      <!-- Services - has submenu -->
+      <li role="none">
+        <button
+          role="menuitem"
+          aria-haspopup="true"
+          aria-expanded="false"
+          class="menubar-item"
+          data-menu-trigger
+        >
+          Services
+        </button>
+        <ul role="menu" aria-label="Services" class="submenu">
+          <li role="none">
+            <a href="#consulting" role="menuitem" class="submenu-item">Consulting</a>
+          </li>
+          <li role="none">
+            <a href="#training" role="menuitem" class="submenu-item">Training</a>
+          </li>
+        </ul>
+      </li>
+
+      <!-- About - top-level link (no submenu) -->
+      <li role="none">
+        <a href="#about" role="menuitem" class="menubar-item">About</a>
+      </li>
+
+      <!-- Contact Us - top-level link (no submenu) -->
+      <li role="none">
+        <a href="#contact" role="menuitem" class="menubar-item">Contact Us</a>
+      </li>
+    </ul>
+  </nav>
+
+  <main>
+    <h1>Dropdown Navigation Menu</h1>
+    <p>
+      This page demonstrates a WCAG-compliant dropdown navigation menu
+      implementing the
+      <a href="https://www.w3.org/WAI/ARIA/apg/patterns/menubar/">WAI-ARIA Menubar pattern</a>.
+    </p>
+
+    <h2>Keyboard Interaction</h2>
+    <dl>
+      <dt><kbd>Tab</kbd></dt>
+      <dd>Moves focus into and out of the menubar.</dd>
+
+      <dt><kbd>Left Arrow</kbd> / <kbd>Right Arrow</kbd></dt>
+      <dd>Moves focus between top-level menubar items.</dd>
+
+      <dt><kbd>Enter</kbd> / <kbd>Space</kbd></dt>
+      <dd>Opens the submenu (if present) and moves focus to the first item. Activates links.</dd>
+
+      <dt><kbd>Down Arrow</kbd></dt>
+      <dd>Opens the submenu (if closed) or moves to the next submenu item.</dd>
+
+      <dt><kbd>Up Arrow</kbd></dt>
+      <dd>Moves to the previous submenu item. Wraps to last item from first.</dd>
+
+      <dt><kbd>Escape</kbd></dt>
+      <dd>Closes the submenu and returns focus to the parent menubar button.</dd>
+
+      <dt><kbd>Home</kbd> / <kbd>End</kbd></dt>
+      <dd>Moves focus to the first/last item in the submenu or menubar.</dd>
+    </dl>
+  </main>
+
+  <script src="js/dropdown.js"></script>
+</body>
+</html>

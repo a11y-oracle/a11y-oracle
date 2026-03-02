@@ -1,0 +1,14 @@
+{
+  "name": "sandbox",
+  "projectType": "application",
+  "sourceRoot": "apps/sandbox/src",
+  "targets": {
+    "serve": {
+      "executor": "@nx/web:file-server",
+      "options": {
+        "staticFilePath": "apps/sandbox/src",
+        "port": 4200
+      }
+    }
+  }
+}
