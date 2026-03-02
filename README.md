@@ -1,106 +1,213 @@
-# New Nx Repository
+# A11y-Oracle
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+A Node.js testing utility that intercepts the browser's Accessibility Tree via the Chrome DevTools Protocol (CDP) and generates standardized speech output. Assert that your UI communicates the correct Name, Role, and State to assistive technologies.
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+## Why A11y-Oracle?
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
-## Finish your Nx platform setup
+Screen readers like NVDA, JAWS, and VoiceOver each have proprietary verbosity rules that change between OS updates. Tying test assertions to their exact phrasing produces brittle test suites.
 
-🚀 [Finish setting up your workspace](https://cloud.nx.app/connect/nq5Hy2DWd7) to get faster builds with remote caching, distributed task execution, and self-healing CI. [Learn more about Nx Cloud](https://nx.dev/ci/intro/why-nx-cloud).
-## Generate a library
-
-```sh
-npx nx g @nx/js:lib packages/pkg1 --publishable --importPath=@my-org/pkg1
-```
-
-## Run tasks
-
-To build the library use:
-
-```sh
-npx nx build pkg1
-```
-
-To run any task with Nx use:
-
-```sh
-npx nx <target> <project-name>
-```
-
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Versioning and releasing
-
-To version and release the library use
+A11y-Oracle takes a different approach: it reads the browser's own accessibility tree (the same data assistive technologies consume) and produces a **standardized speech string** based on W3C specifications. The output format is predictable and stable:
 
 ```
-npx nx release
+[Computed Name], [Role], [State/Properties]
 ```
 
-Pass `--dry-run` to see what would happen without actually releasing the library.
+**Examples:**
 
-[Learn more about Nx release &raquo;](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+| HTML | Speech Output |
+|------|--------------|
+| `<button aria-expanded="false">Products</button>` | `Products, button, collapsed` |
+| `<nav aria-label="Main">...</nav>` | `Main, navigation landmark` |
+| `<a href="/home">Home</a>` | `Home, link` |
+| `<input type="checkbox" checked aria-label="Agree">` | `Agree, checkbox, checked` |
 
-## Keep TypeScript project references up to date
+## Architecture
 
-Nx automatically updates TypeScript [project references](https://www.typescriptlang.org/docs/handbook/project-references.html) in `tsconfig.json` files to ensure they remain accurate based on your project dependencies (`import` or `require` statements). This sync is automatically done when running tasks such as `build` or `typecheck`, which require updated references to function correctly.
+A11y-Oracle is structured as an Nx monorepo with three publishable packages:
 
-To manually trigger the process to sync the project graph dependencies information to the TypeScript project references, run the following command:
-
-```sh
-npx nx sync
+```
+a11y-oracle/
+  libs/
+    core-engine/          @a11y-oracle/core-engine
+    playwright-plugin/    @a11y-oracle/playwright-plugin
+    cypress-plugin/       @a11y-oracle/cypress-plugin
+  apps/
+    sandbox/              WCAG-compliant test fixtures (HTML)
+    e2e-tests/            Playwright E2E tests
+    cypress-e2e/          Cypress E2E tests
 ```
 
-You can enforce that the TypeScript project references are always in the correct state when running in CI by adding a step to your CI job configuration that runs the following command:
+- **`@a11y-oracle/core-engine`** is the framework-agnostic speech engine. It depends only on a `CDPSessionLike` interface, not on any test framework.
+- **`@a11y-oracle/playwright-plugin`** wraps the core engine with Playwright-specific lifecycle management and provides a test fixture.
+- **`@a11y-oracle/cypress-plugin`** wraps the core engine with Cypress custom commands, handling Cypress's iframe architecture transparently.
 
-```sh
-npx nx sync:check
+## Quick Start
+
+### With Playwright
+
+```bash
+npm install @a11y-oracle/playwright-plugin
 ```
 
-[Learn more about nx sync](https://nx.dev/reference/nx-commands#sync)
+```typescript
+import { test, expect } from '@a11y-oracle/playwright-plugin';
 
-## Nx Cloud
+test('dropdown menu keyboard navigation', async ({ page, a11y }) => {
+  await page.goto('/dropdown-nav.html');
 
-Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+  // Tab to the first menu item
+  const speech = await a11y.press('Tab');
+  expect(speech).toContain('Home');
+  expect(speech).toContain('menu item');
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+  // Arrow right to a button with submenu
+  const products = await a11y.press('ArrowRight');
+  expect(products).toBe('Products, menu item, collapsed');
 
-### Set up CI (non-Github Actions CI)
+  // Open the submenu
+  const clothing = await a11y.press('Enter');
+  expect(clothing).toContain('Clothing');
 
-**Note:** This is only required if your CI provider is not GitHub Actions.
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
+  // Verify landmarks exist in the page
+  const tree = await a11y.getFullTreeSpeech();
+  const nav = tree.find(r => r.speech.includes('navigation landmark'));
+  expect(nav).toBeDefined();
+});
 ```
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+### With Cypress
 
-## Install Nx Console
+```bash
+npm install @a11y-oracle/cypress-plugin
+```
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+**cypress/support/e2e.ts:**
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+```typescript
+import '@a11y-oracle/cypress-plugin';
+```
 
-## Useful links
+**cypress/e2e/dropdown.cy.ts:**
 
-Learn more:
+```typescript
+describe('Dropdown Navigation', () => {
+  beforeEach(() => {
+    cy.visit('/dropdown-nav.html');
+    cy.initA11yOracle();
+  });
 
-- [Learn more about this workspace setup](https://nx.dev/nx-api/js?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+  afterEach(() => {
+    cy.disposeA11yOracle();
+  });
 
-And join the Nx community:
+  it('Tab announces first menu item', () => {
+    cy.a11yPress('Tab').should('contain', 'Home');
+  });
 
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+  it('Enter opens submenu', () => {
+    cy.a11yPress('Tab');
+    cy.a11yPress('ArrowRight');
+    cy.a11yPress('Enter').should('contain', 'Clothing');
+  });
+});
+```
+
+## Speech Output Format
+
+Every element produces a string following this pattern:
+
+```
+[Computed Name], [Role], [State/Properties]
+```
+
+Parts are omitted when empty. Multiple states are comma-separated in a fixed order.
+
+### Roles
+
+The engine maps 50+ CDP role values to speech strings. Common mappings:
+
+| CDP Role | Speech | Category |
+|----------|--------|----------|
+| `button` | `button` | Interactive |
+| `link` | `link` | Interactive |
+| `checkbox` | `checkbox` | Interactive |
+| `radio` | `radio button` | Interactive |
+| `textbox` | `edit text` | Interactive |
+| `combobox` | `combo box` | Interactive |
+| `menuitem` | `menu item` | Interactive |
+| `tab` | `tab` | Interactive |
+| `navigation` | `navigation landmark` | Landmark |
+| `main` | `main landmark` | Landmark |
+| `banner` | `banner landmark` | Landmark |
+| `heading` | `heading` | Structure |
+| `list` | `list` | Structure |
+| `table` | `table` | Structure |
+| `dialog` | `dialog` | Structure |
+| `generic` | *(silent)* | Silent |
+| `presentation` | *(silent)* | Silent |
+
+Landmark roles automatically append "landmark" (configurable via `includeLandmarks` option). Unknown roles pass through as-is for forward compatibility.
+
+### States
+
+Boolean ARIA properties are mapped to spoken strings:
+
+| ARIA Property | `true` | `false` |
+|--------------|--------|---------|
+| `aria-expanded` | `expanded` | `collapsed` |
+| `aria-checked` | `checked` | `not checked` |
+| `aria-selected` | `selected` | *(silent)* |
+| `aria-pressed` | `pressed` | `not pressed` |
+| `aria-disabled` | `dimmed` | *(silent)* |
+| `aria-required` | `required` | *(silent)* |
+| `aria-invalid` | `invalid` | *(silent)* |
+| `aria-readonly` | `read only` | *(silent)* |
+
+Heading levels are announced as `level N` (e.g., `Intro, heading, level 2`).
+
+## Requirements
+
+- **Chromium-based browser** (Chrome, Edge, Electron). CDP is not available for Firefox or WebKit.
+- **Node.js** >= 18
+- **Playwright** >= 1.40 (for the Playwright plugin)
+- **Cypress** >= 12 (for the Cypress plugin)
+
+## Development
+
+This is an Nx monorepo. Common tasks:
+
+```bash
+# Build all libraries
+npx nx run-many --targets=build
+
+# Run core engine unit tests (117 tests)
+npx nx test core-engine
+
+# Run Playwright E2E tests (9 tests)
+npx nx e2e e2e-tests
+
+# Run Cypress E2E tests (9 tests)
+npx nx e2e cypress-e2e
+
+# Visualize project dependency graph
+npx nx graph
+```
+
+## Packages
+
+| Package | Description | Docs |
+|---------|-------------|------|
+| [`@a11y-oracle/core-engine`](libs/core-engine) | Framework-agnostic speech engine | [README](libs/core-engine/README.md) |
+| [`@a11y-oracle/playwright-plugin`](libs/playwright-plugin) | Playwright test fixture and wrapper | [README](libs/playwright-plugin/README.md) |
+| [`@a11y-oracle/cypress-plugin`](libs/cypress-plugin) | Cypress custom commands | [README](libs/cypress-plugin/README.md) |
+
+## How It Works
+
+1. **CDP Connection** -- The plugin establishes a Chrome DevTools Protocol session with the browser.
+2. **Accessibility Tree Fetch** -- `Accessibility.getFullAXTree()` returns a flat array of AXNodes. Chrome has already computed accessible names per the W3C AccName spec.
+3. **Focus Detection** -- The engine finds the node with `focused: true`. When multiple nodes report focus (e.g., both `RootWebArea` and a `menuitem`), the deepest (most specific) node is selected.
+4. **Speech Computation** -- The node's role is mapped via `ROLE_TO_SPEECH`, boolean properties are mapped via `STATE_MAPPINGS`, and the parts are joined into the final speech string.
+
+## License
+
+MIT
