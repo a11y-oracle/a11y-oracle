@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Keyboard Trap Test - A11y-Oracle Sandbox</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 2rem;
+      background-color: #ffffff;
+      color: #333;
+    }
+
+    h1 { margin-bottom: 1.5rem; }
+    h2 { margin-top: 2rem; margin-bottom: 1rem; color: #555; }
+    section { margin-bottom: 2rem; padding: 1.5rem; border: 1px solid #ddd; border-radius: 4px; }
+    p { margin-bottom: 1rem; color: #666; }
+
+    button, input, a {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      margin: 0.25rem;
+    }
+
+    button {
+      background: #3498db;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    button:focus, input:focus, a:focus {
+      outline: 3px solid #2c3e50;
+      outline-offset: 2px;
+    }
+
+    input {
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+    }
+
+    .trap-container {
+      border: 2px solid #e74c3c;
+      padding: 1rem;
+      border-radius: 4px;
+      background: #ffeaea;
+    }
+
+    .good-container {
+      border: 2px solid #27ae60;
+      padding: 1rem;
+      border-radius: 4px;
+      background: #eafff0;
+    }
+
+    .form-group {
+      margin-bottom: 0.75rem;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-weight: 600;
+    }
+
+    /* Skip link for tab order */
+    .skip-link {
+      display: inline-block;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <!--
+    Keyboard Trap Test Fixtures
+
+    Expected behaviors:
+      #bad-trap    → Keyboard trap: Tab cycles between buttons, never escapes
+      #good-form   → Not a trap: Tab moves through form fields and exits to "Outside" button
+      Tab order    → All tabbable elements in expected DOM order
+  -->
+
+  <h1>Keyboard Trap Test Page</h1>
+
+  <a href="#main-content" class="skip-link" id="skip-link">Skip to content</a>
+
+  <section id="trap-section">
+    <h2>Keyboard Trap (WCAG 2.1.2 Fail)</h2>
+    <p>This container traps Tab focus — pressing Tab cycles between the three buttons and never leaves.</p>
+    <div id="bad-trap" class="trap-container">
+      <button id="trap-btn-1">Trap Button 1</button>
+      <button id="trap-btn-2">Trap Button 2</button>
+      <button id="trap-btn-3">Trap Button 3</button>
+    </div>
+  </section>
+
+  <section id="good-section">
+    <h2>Good Container (Tab Exits Naturally)</h2>
+    <p>This form allows Tab to exit naturally after the last field.</p>
+    <div id="good-form" class="good-container">
+      <div class="form-group">
+        <label for="name-input">Name</label>
+        <input type="text" id="name-input" placeholder="Enter name">
+      </div>
+      <div class="form-group">
+        <label for="email-input">Email</label>
+        <input type="email" id="email-input" placeholder="Enter email">
+      </div>
+    </div>
+  </section>
+
+  <button id="outside-btn">Outside Button</button>
+
+  <script>
+    // Keyboard trap: intercept Tab key to keep focus within #bad-trap
+    const trap = document.getElementById('bad-trap');
+    const trapButtons = trap.querySelectorAll('button');
+    const firstBtn = trapButtons[0];
+    const lastBtn = trapButtons[trapButtons.length - 1];
+
+    trap.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          // Shift+Tab: wrap backward
+          if (document.activeElement === firstBtn) {
+            lastBtn.focus();
+          } else {
+            const idx = Array.from(trapButtons).indexOf(document.activeElement);
+            if (idx > 0) trapButtons[idx - 1].focus();
+          }
+        } else {
+          // Tab: wrap forward
+          if (document.activeElement === lastBtn) {
+            firstBtn.focus();
+          } else {
+            const idx = Array.from(trapButtons).indexOf(document.activeElement);
+            if (idx < trapButtons.length - 1) trapButtons[idx + 1].focus();
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

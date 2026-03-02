@@ -37,3 +37,18 @@
 export { A11yOracle } from './lib/a11y-oracle.js';
 export { test, expect } from './lib/fixture.js';
 export type { A11yOracleFixtures } from './lib/fixture.js';
+
+// Re-export types for consumer convenience
+export type {
+  A11yState,
+  A11yFocusedElement,
+  A11yFocusIndicator,
+  A11yOrchestratorOptions,
+  SpeechResult,
+  SpeechEngineOptions,
+  ModifierKeys,
+  TabOrderReport,
+  TabOrderEntry,
+  TraversalResult,
+  FocusIndicator,
+} from '@a11y-oracle/core-engine';

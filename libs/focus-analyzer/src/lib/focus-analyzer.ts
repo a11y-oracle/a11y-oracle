@@ -248,7 +248,7 @@ export class FocusAnalyzer {
             if (!el || el === document.body) return { outside: true, element: null };
             const rect = el.getBoundingClientRect();
             const entry = {
-              index: ${`i`},
+              index: ${i},
               tag: el.tagName,
               id: el.id || '',
               textContent: (el.textContent || '').trim().substring(0, 200),

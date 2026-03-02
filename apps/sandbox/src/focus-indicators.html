@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focus Indicators - A11y-Oracle Sandbox</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 2rem;
+      background-color: #ffffff;
+      color: #333;
+    }
+
+    h1 { margin-bottom: 1.5rem; }
+    h2 { margin-top: 2rem; margin-bottom: 1rem; color: #555; }
+    section { margin-bottom: 2rem; padding: 1.5rem; border: 1px solid #ddd; border-radius: 4px; }
+    p { margin-bottom: 1rem; color: #666; }
+
+    /* Good focus indicator: 3px solid high-contrast outline */
+    .good-outline {
+      padding: 0.5rem 1rem;
+      background: #2c3e50;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .good-outline:focus {
+      outline: 3px solid #3498db;
+      outline-offset: 2px;
+    }
+
+    /* Box-shadow focus indicator */
+    .box-shadow-focus {
+      padding: 0.5rem 1rem;
+      background: #ffffff;
+      color: #333;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .box-shadow-focus:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px #3498db;
+    }
+
+    /* NO focus indicator — fails WCAG 2.4.12 */
+    .no-focus-indicator {
+      padding: 0.5rem 1rem;
+      background: #e74c3c;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .no-focus-indicator:focus {
+      outline: none;
+    }
+
+    /* Low contrast focus indicator — fails WCAG 2.4.12 AA */
+    .low-contrast {
+      padding: 0.5rem 1rem;
+      background: #f0f0f0;
+      color: #333;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .low-contrast:focus {
+      outline: 2px solid #e0e0e0;
+    }
+
+    /* High contrast on dark background */
+    .dark-bg-section {
+      background: #1a1a2e;
+      padding: 1.5rem;
+      border-radius: 4px;
+    }
+    .dark-bg-section p { color: #ccc; }
+    .dark-bg-btn {
+      padding: 0.5rem 1rem;
+      background: #16213e;
+      color: #eee;
+      border: 1px solid #444;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .dark-bg-btn:focus {
+      outline: 3px solid #e94560;
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <!--
+    Focus Indicator Test Fixtures
+
+    Expected behaviors:
+      "Good Outline" button  → isVisible: true, meetsWCAG_AA: true (blue on dark bg, high contrast)
+      "Box Shadow" button    → isVisible: true (box-shadow based indicator)
+      "No Indicator" button  → isVisible: false, meetsWCAG_AA: false
+      "Low Contrast" button  → isVisible: true, meetsWCAG_AA: false (light gray on light gray)
+      "Dark Background" btn  → isVisible: true, meetsWCAG_AA: true (red on very dark bg)
+  -->
+
+  <h1>Focus Indicator Test Page</h1>
+
+  <section id="good-outline-section">
+    <h2>Good Outline (WCAG AA Pass)</h2>
+    <p>3px solid blue outline on dark background — should pass WCAG 2.4.12 AA.</p>
+    <button id="good-outline-btn" class="good-outline">Good Outline</button>
+  </section>
+
+  <section id="box-shadow-section">
+    <h2>Box Shadow Focus</h2>
+    <p>Uses box-shadow instead of outline for the focus indicator.</p>
+    <button id="box-shadow-btn" class="box-shadow-focus">Box Shadow</button>
+  </section>
+
+  <section id="no-indicator-section">
+    <h2>No Focus Indicator (WCAG Fail)</h2>
+    <p>Focus outline removed with <code>outline: none</code> and no replacement.</p>
+    <button id="no-indicator-btn" class="no-focus-indicator">No Indicator</button>
+  </section>
+
+  <section id="low-contrast-section">
+    <h2>Low Contrast (WCAG AA Fail)</h2>
+    <p>Light gray outline on light background — insufficient contrast ratio.</p>
+    <button id="low-contrast-btn" class="low-contrast">Low Contrast</button>
+  </section>
+
+  <section id="dark-bg-section" class="dark-bg-section">
+    <h2 style="color: #eee;">Dark Background (WCAG AA Pass)</h2>
+    <p>Red outline on very dark background — high contrast.</p>
+    <button id="dark-bg-btn" class="dark-bg-btn">Dark Background</button>
+  </section>
+</body>
+</html>

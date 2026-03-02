@@ -46,4 +46,13 @@ import './lib/commands.js';
 export type {
   SpeechResult,
   SpeechEngineOptions,
+  A11yState,
+  A11yFocusedElement,
+  A11yFocusIndicator,
+  A11yOrchestratorOptions,
+  ModifierKeys,
+  TabOrderReport,
+  TabOrderEntry,
+  TraversalResult,
+  FocusIndicator,
 } from '@a11y-oracle/core-engine';

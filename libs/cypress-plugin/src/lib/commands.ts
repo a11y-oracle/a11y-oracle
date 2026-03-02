@@ -1,7 +1,8 @@
 /**
  * @module commands
  *
- * Custom Cypress commands for accessibility speech testing.
+ * Custom Cypress commands for accessibility speech testing and
+ * keyboard/focus analysis.
  *
  * Uses `Cypress.automation('remote:debugger:protocol')` to communicate
  * with Chrome DevTools Protocol directly through Cypress's own CDP
@@ -14,6 +15,7 @@
  * Cypress runs the AUT (app under test) inside an iframe within
  * its runner page. This module handles:
  * - Scoping accessibility tree queries to the AUT frame via `frameId`
+ * - Executing `Runtime.evaluate` in the AUT frame via `contextId`
  * - Focusing the AUT iframe before dispatching keyboard events
  *
  * @example
@@ -21,15 +23,22 @@
  * // In your test:
  * cy.initA11yOracle();
  * cy.a11yPress('Tab').should('contain', 'Home');
+ * cy.a11yPressKey('Tab').then(state => {
+ *   expect(state.focusIndicator.meetsWCAG_AA).to.be.true;
+ * });
  * cy.disposeA11yOracle();
  * ```
  */
 
-import { SpeechEngine } from '@a11y-oracle/core-engine';
+import { SpeechEngine, A11yOrchestrator } from '@a11y-oracle/core-engine';
 import type {
   CDPSessionLike,
   SpeechResult,
-  SpeechEngineOptions,
+  A11yState,
+  A11yOrchestratorOptions,
+  TabOrderReport,
+  TraversalResult,
+  ModifierKeys,
 } from '@a11y-oracle/core-engine';
 import { KEY_DEFINITIONS } from '@a11y-oracle/keyboard-engine';
 
@@ -42,7 +51,7 @@ declare global {
        * Initialize A11y-Oracle. Must be called before other a11y commands.
        * Typically called in `beforeEach()`.
        */
-      initA11yOracle(options?: SpeechEngineOptions): Chainable<null>;
+      initA11yOracle(options?: A11yOrchestratorOptions): Chainable<null>;
 
       /**
        * Press a keyboard key via CDP and return the speech for the
@@ -62,6 +71,31 @@ declare global {
       getA11yFullTreeSpeech(): Chainable<SpeechResult[]>;
 
       /**
+       * Press a key via CDP and return the unified accessibility state.
+       *
+       * @param key - Key name (e.g. `'Tab'`, `'Enter'`, `'ArrowDown'`).
+       * @param modifiers - Optional modifier keys.
+       */
+      a11yPressKey(key: string, modifiers?: ModifierKeys): Chainable<A11yState>;
+
+      /** Get the current unified accessibility state without pressing a key. */
+      a11yState(): Chainable<A11yState>;
+
+      /** Extract all tabbable elements in DOM tab order. */
+      a11yTraverseTabOrder(): Chainable<TabOrderReport>;
+
+      /**
+       * Detect whether a container traps keyboard focus (WCAG 2.1.2).
+       *
+       * @param selector - CSS selector for the container to test.
+       * @param maxTabs - Maximum Tab presses before declaring a trap. Default 50.
+       */
+      a11yTraverseSubTree(
+        selector: string,
+        maxTabs?: number
+      ): Chainable<TraversalResult>;
+
+      /**
        * Dispose A11y-Oracle and release resources.
        * Typically called in `afterEach()`.
        */
@@ -73,7 +107,9 @@ declare global {
 // ── Internals ──────────────────────────────────────────────────────
 
 let engine: SpeechEngine | null = null;
+let orchestrator: A11yOrchestrator | null = null;
 let autFrameId: string | null = null;
+let autContextId: number | null = null;
 
 /**
  * Send a raw CDP command through Cypress's automation channel.
@@ -92,17 +128,28 @@ function sendCDP(
  * Create a {@link CDPSessionLike} adapter that routes CDP calls through
  * Cypress's built-in `remote:debugger:protocol` automation channel.
  *
- * Automatically injects the AUT iframe's `frameId` into
- * `Accessibility.getFullAXTree` calls so the tree is scoped
- * to the app under test, not the Cypress runner UI.
+ * Automatically injects:
+ * - The AUT iframe's `frameId` into `Accessibility.getFullAXTree` calls
+ * - The AUT iframe's `contextId` into `Runtime.evaluate` calls
+ *
+ * This ensures all queries target the AUT content, not the Cypress
+ * runner UI.
  */
 function createFrameAwareCDPAdapter(): CDPSessionLike {
   return {
     send: (method: string, params?: Record<string, unknown>) => {
       const p = { ...params };
+
+      // Scope AXTree to AUT frame
       if (method === 'Accessibility.getFullAXTree' && autFrameId) {
         p['frameId'] = autFrameId;
       }
+
+      // Scope Runtime.evaluate to AUT frame's execution context
+      if (method === 'Runtime.evaluate' && autContextId !== null) {
+        p['contextId'] = autContextId;
+      }
+
       return sendCDP(method, p);
     },
   };
@@ -140,6 +187,27 @@ async function findAUTFrameId(): Promise<string | null> {
   }
 
   return null;
+}
+
+/**
+ * Discover the execution context ID for the AUT frame.
+ *
+ * Creates an isolated world in the AUT frame, which shares the
+ * same DOM (including `document.activeElement`, computed styles, etc.)
+ * but has its own JavaScript scope. This ensures `Runtime.evaluate`
+ * calls execute in the AUT, not the Cypress runner.
+ */
+async function findAUTContextId(frameId: string): Promise<number | null> {
+  try {
+    const result = await sendCDP('Page.createIsolatedWorld', {
+      frameId,
+      worldName: 'a11y-oracle',
+      grantUniveralAccess: true,
+    });
+    return result.executionContextId;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -227,7 +295,7 @@ async function dispatchKey(key: string): Promise<void> {
 
 Cypress.Commands.add(
   'initA11yOracle',
-  (options?: SpeechEngineOptions) => {
+  (options?: A11yOrchestratorOptions) => {
     cy.wrap(null, { log: false }).then(async () => {
       // Enable required CDP domains
       await sendCDP('DOM.enable');
@@ -242,12 +310,23 @@ Cypress.Commands.add(
         );
       }
 
+      // Get the AUT frame's execution context for Runtime.evaluate
+      autContextId = await findAUTContextId(autFrameId);
+
       // Focus the AUT iframe so key events reach it
       await focusAUTFrame();
 
+      // Create the CDP adapter that routes to the AUT frame
+      const adapter = createFrameAwareCDPAdapter();
+
       // Create the speech engine scoped to the AUT frame
-      engine = new SpeechEngine(createFrameAwareCDPAdapter(), options);
+      engine = new SpeechEngine(adapter, options);
       await engine.enable();
+
+      // Create the orchestrator for unified state
+      orchestrator = new A11yOrchestrator(adapter, options);
+      await orchestrator.enable();
+
       return null;
     });
   }
@@ -305,13 +384,69 @@ Cypress.Commands.add('getA11yFullTreeSpeech', () => {
   });
 });
 
+Cypress.Commands.add('a11yPressKey', (key: string, modifiers?: ModifierKeys) => {
+  cy.wrap(null, { log: false }).then(async () => {
+    if (!orchestrator) {
+      throw new Error(
+        'A11y-Oracle not initialized. Call cy.initA11yOracle() first.'
+      );
+    }
+
+    // Ensure the AUT iframe has focus before key dispatch
+    await focusAUTFrame();
+
+    return orchestrator.pressKey(key, modifiers);
+  });
+});
+
+Cypress.Commands.add('a11yState', () => {
+  cy.wrap(null, { log: false }).then(async () => {
+    if (!orchestrator) {
+      throw new Error(
+        'A11y-Oracle not initialized. Call cy.initA11yOracle() first.'
+      );
+    }
+    return orchestrator.getState();
+  });
+});
+
+Cypress.Commands.add('a11yTraverseTabOrder', () => {
+  cy.wrap(null, { log: false }).then(async () => {
+    if (!orchestrator) {
+      throw new Error(
+        'A11y-Oracle not initialized. Call cy.initA11yOracle() first.'
+      );
+    }
+    return orchestrator.traverseTabOrder();
+  });
+});
+
+Cypress.Commands.add(
+  'a11yTraverseSubTree',
+  (selector: string, maxTabs?: number) => {
+    cy.wrap(null, { log: false }).then(async () => {
+      if (!orchestrator) {
+        throw new Error(
+          'A11y-Oracle not initialized. Call cy.initA11yOracle() first.'
+        );
+      }
+      return orchestrator.traverseSubTree(selector, maxTabs);
+    });
+  }
+);
+
 Cypress.Commands.add('disposeA11yOracle', () => {
   cy.wrap(null, { log: false }).then(async () => {
+    if (orchestrator) {
+      await orchestrator.disable();
+      orchestrator = null;
+    }
     if (engine) {
-      await engine.disable();
+      // Engine was already disabled via orchestrator (same CDP session)
       engine = null;
     }
     autFrameId = null;
+    autContextId = null;
     return null;
   });
 });
