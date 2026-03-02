@@ -7,6 +7,9 @@
       "path": "./libs/core-engine"
     },
     {
+      "path": "./libs/keyboard-engine"
+    },
+    {
       "path": "./libs/playwright-plugin"
     },
     {

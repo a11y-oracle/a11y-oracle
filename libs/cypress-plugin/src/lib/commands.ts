@@ -31,7 +31,7 @@ import type {
   SpeechResult,
   SpeechEngineOptions,
 } from '@a11y-oracle/core-engine';
-import { KEY_DEFINITIONS } from './key-map.js';
+import { KEY_DEFINITIONS } from '@a11y-oracle/keyboard-engine';
 
 // ── Type declarations ──────────────────────────────────────────────
 

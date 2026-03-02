@@ -1,5 +1,5 @@
 {
-  "name": "@a11y-oracle/cypress-plugin",
+  "name": "@a11y-oracle/keyboard-engine",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/index.js",
@@ -17,12 +17,8 @@
     "dist",
     "!**/*.tsbuildinfo"
   ],
-  "peerDependencies": {
-    "cypress": ">=12.0.0"
-  },
   "dependencies": {
-    "@a11y-oracle/core-engine": "0.0.1",
-    "@a11y-oracle/keyboard-engine": "0.0.1",
+    "devtools-protocol": "^0.0.1591961",
     "tslib": "^2.3.0"
   }
 }

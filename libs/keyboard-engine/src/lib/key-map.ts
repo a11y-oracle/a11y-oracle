@@ -2,18 +2,11 @@
  * @module key-map
  *
  * Maps human-readable key names to CDP `Input.dispatchKeyEvent` parameters.
- * Used by the {@link commands} module to dispatch real keyboard events
+ * Used by the {@link KeyboardEngine} to dispatch real keyboard events
  * through the Chrome DevTools Protocol.
  */
 
-export interface KeyDefinition {
-  /** The `key` property for CDP (e.g. `'Tab'`, `'Enter'`). */
-  key: string;
-  /** The `code` property for CDP (e.g. `'Tab'`, `'Enter'`). */
-  code: string;
-  /** The Windows virtual key code (e.g. `9` for Tab). */
-  keyCode: number;
-}
+import type { KeyDefinition } from './types.js';
 
 /**
  * Map of key names to their CDP Input.dispatchKeyEvent parameters.

@@ -7,17 +7,9 @@
     "tsBuildInfoFile": "dist/tsconfig.lib.tsbuildinfo",
     "emitDeclarationOnly": false,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["es2022", "dom"],
-    "types": ["cypress"]
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"],
-  "references": [
-    {
-      "path": "../core-engine/tsconfig.lib.json"
-    },
-    {
-      "path": "../keyboard-engine/tsconfig.lib.json"
-    }
-  ]
+  "references": []
 }
