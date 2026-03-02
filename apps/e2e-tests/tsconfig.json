@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc",
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "playwright.config.ts"],
+  "references": [
+    {
+      "path": "../../libs/playwright-plugin"
+    }
+  ]
+}

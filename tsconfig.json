@@ -5,6 +5,12 @@
   "references": [
     {
       "path": "./libs/core-engine"
+    },
+    {
+      "path": "./libs/playwright-plugin"
+    },
+    {
+      "path": "./apps/e2e-tests"
     }
   ]
 }

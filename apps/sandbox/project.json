@@ -4,11 +4,11 @@
   "sourceRoot": "apps/sandbox/src",
   "targets": {
     "serve": {
-      "executor": "@nx/web:file-server",
+      "executor": "nx:run-commands",
       "options": {
-        "staticFilePath": "apps/sandbox/src",
-        "port": 4200
-      }
+        "command": "npx http-server apps/sandbox/src -p 4200 -c-1 --silent"
+      },
+      "continuous": true
     }
   }
 }

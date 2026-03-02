@@ -1,0 +1,13 @@
+{
+  "name": "e2e-tests",
+  "projectType": "application",
+  "targets": {
+    "e2e": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "npx playwright test",
+        "cwd": "apps/e2e-tests"
+      }
+    }
+  }
+}

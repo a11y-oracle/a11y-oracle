@@ -23,7 +23,7 @@
 
       <!-- Top-level link (no submenu) -->
       <li role="none">
-        <a href="#home" role="menuitem" class="menubar-item">Home</a>
+        <a href="#home" role="menuitem" class="menubar-item" tabindex="0">Home</a>
       </li>
 
       <!-- Products - has submenu -->
@@ -34,18 +34,19 @@
           aria-expanded="false"
           class="menubar-item"
           data-menu-trigger
+          tabindex="-1"
         >
           Products
         </button>
         <ul role="menu" aria-label="Products" class="submenu">
           <li role="none">
-            <a href="#clothing" role="menuitem" class="submenu-item">Clothing</a>
+            <a href="#clothing" role="menuitem" class="submenu-item" tabindex="-1">Clothing</a>
           </li>
           <li role="none">
-            <a href="#shoes" role="menuitem" class="submenu-item">Shoes</a>
+            <a href="#shoes" role="menuitem" class="submenu-item" tabindex="-1">Shoes</a>
           </li>
           <li role="none">
-            <a href="#accessories" role="menuitem" class="submenu-item">Accessories</a>
+            <a href="#accessories" role="menuitem" class="submenu-item" tabindex="-1">Accessories</a>
           </li>
         </ul>
       </li>
@@ -58,27 +59,28 @@
           aria-expanded="false"
           class="menubar-item"
           data-menu-trigger
+          tabindex="-1"
         >
           Services
         </button>
         <ul role="menu" aria-label="Services" class="submenu">
           <li role="none">
-            <a href="#consulting" role="menuitem" class="submenu-item">Consulting</a>
+            <a href="#consulting" role="menuitem" class="submenu-item" tabindex="-1">Consulting</a>
           </li>
           <li role="none">
-            <a href="#training" role="menuitem" class="submenu-item">Training</a>
+            <a href="#training" role="menuitem" class="submenu-item" tabindex="-1">Training</a>
           </li>
         </ul>
       </li>
 
       <!-- About - top-level link (no submenu) -->
       <li role="none">
-        <a href="#about" role="menuitem" class="menubar-item">About</a>
+        <a href="#about" role="menuitem" class="menubar-item" tabindex="-1">About</a>
       </li>
 
       <!-- Contact Us - top-level link (no submenu) -->
       <li role="none">
-        <a href="#contact" role="menuitem" class="menubar-item">Contact Us</a>
+        <a href="#contact" role="menuitem" class="menubar-item" tabindex="-1">Contact Us</a>
       </li>
     </ul>
   </nav>

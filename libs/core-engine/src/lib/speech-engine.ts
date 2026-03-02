@@ -146,23 +146,28 @@ export class SpeechEngine {
   }
 
   /**
-   * Find the node with `focused: true` in the flat AXTree node list.
+   * Find the most specific focused node in the flat AXTree node list.
    *
-   * CDP returns the AXTree as a flat array. Each node may have a
-   * `focused` property in its `properties` array.
+   * CDP returns the AXTree as a flat array with the document node first
+   * and more specific nodes later. Multiple nodes can report `focused: true`
+   * (e.g., both the RootWebArea and the actual focused element). This method
+   * returns the **last** focused node, which is the most specific (deepest)
+   * element that actually has user focus.
    *
    * @param nodes - The flat array of AXNodes from `getFullAXTree()`.
-   * @returns The focused node, or `null` if no node is focused.
+   * @returns The most specific focused node, or `null` if no node is focused.
    */
   findFocusedNode(
     nodes: Protocol.Accessibility.AXNode[]
   ): Protocol.Accessibility.AXNode | null {
-    return (
-      nodes.find((node) => {
-        const focused = node.properties?.find((p) => p.name === 'focused');
-        return focused?.value?.value === true;
-      }) ?? null
-    );
+    let lastFocused: Protocol.Accessibility.AXNode | null = null;
+    for (const node of nodes) {
+      const focused = node.properties?.find((p) => p.name === 'focused');
+      if (focused?.value?.value === true) {
+        lastFocused = node;
+      }
+    }
+    return lastFocused;
   }
 
   /**

@@ -44,6 +44,18 @@
   }
 
   /**
+   * Update roving tabindex: set the target item to tabindex="0"
+   * and all other items in the group to tabindex="-1".
+   * @param {HTMLElement[]} items - The group of items.
+   * @param {HTMLElement} activeItem - The item receiving focus.
+   */
+  function setRovingTabindex(items, activeItem) {
+    items.forEach((item) => {
+      item.setAttribute('tabindex', item === activeItem ? '0' : '-1');
+    });
+  }
+
+  /**
    * Open a submenu and move focus to the first item.
    * @param {HTMLElement} trigger - The button that owns the submenu.
    * @param {boolean} [focusFirst=true] - Whether to focus the first submenu item.
@@ -123,6 +135,7 @@
       case 'ArrowRight': {
         const nextIndex = (currentIndex + 1) % topLevelItems.length;
         closeAllSubmenus();
+        setRovingTabindex(topLevelItems, topLevelItems[nextIndex]);
         topLevelItems[nextIndex].focus();
         handled = true;
         break;
@@ -132,6 +145,7 @@
         const prevIndex =
           (currentIndex - 1 + topLevelItems.length) % topLevelItems.length;
         closeAllSubmenus();
+        setRovingTabindex(topLevelItems, topLevelItems[prevIndex]);
         topLevelItems[prevIndex].focus();
         handled = true;
         break;
@@ -165,6 +179,7 @@
 
       case 'Home': {
         closeAllSubmenus();
+        setRovingTabindex(topLevelItems, topLevelItems[0]);
         topLevelItems[0].focus();
         handled = true;
         break;
@@ -172,6 +187,7 @@
 
       case 'End': {
         closeAllSubmenus();
+        setRovingTabindex(topLevelItems, topLevelItems[topLevelItems.length - 1]);
         topLevelItems[topLevelItems.length - 1].focus();
         handled = true;
         break;

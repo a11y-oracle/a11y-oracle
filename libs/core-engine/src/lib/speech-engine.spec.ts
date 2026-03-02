@@ -385,13 +385,14 @@ describe('SpeechEngine', () => {
       expect(engine.findFocusedNode([])).toBeNull();
     });
 
-    it('returns the first focused node when multiple are focused', () => {
+    it('returns the last (most specific) focused node when multiple are focused', () => {
       const nodes = [
-        createNode({ nodeId: 'n1', role: 'button', name: 'A', focused: true }),
+        createNode({ nodeId: 'n1', role: 'RootWebArea', name: 'Page Title', focused: true }),
         createNode({ nodeId: 'n2', role: 'button', name: 'B', focused: true }),
       ];
       const result = engine.findFocusedNode(nodes);
-      expect(result!.nodeId).toBe('n1');
+      // Should return the most specific (deepest/last) focused node
+      expect(result!.nodeId).toBe('n2');
     });
 
     it('ignores focused=false nodes', () => {
