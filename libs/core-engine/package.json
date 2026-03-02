@@ -18,6 +18,8 @@
     "!**/*.tsbuildinfo"
   ],
   "dependencies": {
+    "@a11y-oracle/keyboard-engine": "0.0.1",
+    "@a11y-oracle/focus-analyzer": "0.0.1",
     "devtools-protocol": "^0.0.1591961",
     "tslib": "^2.3.0"
   }

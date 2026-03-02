@@ -11,5 +11,8 @@
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"],
-  "references": []
+  "references": [
+    { "path": "../keyboard-engine/tsconfig.lib.json" },
+    { "path": "../focus-analyzer/tsconfig.lib.json" }
+  ]
 }

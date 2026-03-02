@@ -74,6 +74,93 @@ export interface SpeechResult {
 }
 
 /**
+ * DOM-level information about the currently focused element.
+ *
+ * This is the orchestrator's view of the focused element — a simpler,
+ * framework-agnostic shape compared to `FocusedElementInfo` from
+ * keyboard-engine (which is a raw CDP extraction type).
+ */
+export interface A11yFocusedElement {
+  /** Tag name, e.g. `'BUTTON'`. */
+  tag: string;
+  /** Element `id` attribute, or empty string. */
+  id: string;
+  /** Element `className` attribute, or empty string. */
+  className: string;
+  /** Trimmed text content of the element. */
+  textContent: string;
+  /** The element's `role` attribute, or empty string. */
+  role: string;
+  /** The element's `aria-label` attribute, or empty string. */
+  ariaLabel: string;
+  /** The element's `tabIndex` property. */
+  tabIndex: number;
+  /** Bounding rectangle in viewport coordinates. */
+  rect: { x: number; y: number; width: number; height: number };
+}
+
+/**
+ * Visual focus indicator analysis from CSS computed styles.
+ *
+ * A simplified projection of the full {@link FocusIndicator} from
+ * `@a11y-oracle/focus-analyzer`, carrying only the fields needed
+ * for unified state assertions.
+ */
+export interface A11yFocusIndicator {
+  /** Whether any visual focus indicator is detected. */
+  isVisible: boolean;
+  /**
+   * Contrast ratio of the focus indicator against the background.
+   * `null` if the colors could not be reliably parsed.
+   */
+  contrastRatio: number | null;
+  /**
+   * Whether the indicator meets WCAG 2.4.12 AA
+   * (contrast ≥ 3.0 and indicator is visible).
+   */
+  meetsWCAG_AA: boolean;
+}
+
+/**
+ * Unified accessibility state combining speech output, focus information,
+ * and visual indicator analysis.
+ *
+ * Returned by {@link A11yOrchestrator.pressKey} and
+ * {@link A11yOrchestrator.getState} to give a single snapshot of
+ * "what the screen reader says" + "where focus is" + "how focus looks".
+ *
+ * @example
+ * ```typescript
+ * const state = await orchestrator.pressKey('Tab');
+ * console.log(state.speech);           // "Products, button, collapsed"
+ * console.log(state.focusedElement?.tag); // "BUTTON"
+ * console.log(state.focusIndicator.meetsWCAG_AA); // true
+ * ```
+ */
+export interface A11yState {
+  /** The full speech string, e.g. `"Products, button, collapsed"`. */
+  speech: string;
+  /** The full speech result with raw AXNode data. `null` if no focused element. */
+  speechResult: SpeechResult | null;
+  /** DOM-level info about the focused element. `null` if no element has focus. */
+  focusedElement: A11yFocusedElement | null;
+  /** Visual focus indicator analysis. */
+  focusIndicator: A11yFocusIndicator;
+}
+
+/**
+ * Configuration options for the {@link A11yOrchestrator}.
+ */
+export interface A11yOrchestratorOptions extends SpeechEngineOptions {
+  /**
+   * Milliseconds to wait after a key press before reading state,
+   * allowing CSS transitions and focus events to settle.
+   * Defaults to `50`.
+   */
+  focusSettleMs?: number;
+}
+
+/**
  * Configuration options for the {@link SpeechEngine}.
  */
 export interface SpeechEngineOptions {
