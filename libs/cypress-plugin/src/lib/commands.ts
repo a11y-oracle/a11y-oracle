@@ -41,6 +41,11 @@ import type {
   ModifierKeys,
 } from '@a11y-oracle/core-engine';
 import { KEY_DEFINITIONS } from '@a11y-oracle/keyboard-engine';
+import {
+  formatFocusIssues,
+  formatTrapIssue,
+} from '@a11y-oracle/audit-formatter';
+import type { AuditContext } from '@a11y-oracle/audit-formatter';
 
 // ── Type declarations ──────────────────────────────────────────────
 
@@ -94,6 +99,32 @@ declare global {
         selector: string,
         maxTabs?: number
       ): Chainable<TraversalResult>;
+
+      /**
+       * Check the current focused element's focus indicator and report
+       * any issues via `cy.task('logOracleIssues')`.
+       *
+       * Mirrors the pattern of `checkAccessibilityAndReport` for axe-core.
+       * Issues are emitted as `OracleIssue[]` and can be accumulated in
+       * `setupNodeEvents` for end-of-run reporting.
+       *
+       * @param context - Optional audit context. Defaults to current spec name and project from env.
+       */
+      a11yCheckFocusAndReport(context?: Partial<AuditContext>): Chainable<void>;
+
+      /**
+       * Check a container for keyboard traps and report any issues via
+       * `cy.task('logOracleIssues')`.
+       *
+       * @param selector - CSS selector for the container to test.
+       * @param maxTabs - Maximum Tab presses before declaring a trap. Default 10.
+       * @param context - Optional audit context.
+       */
+      a11yCheckTrapAndReport(
+        selector: string,
+        maxTabs?: number,
+        context?: Partial<AuditContext>
+      ): Chainable<void>;
 
       /**
        * Dispose A11y-Oracle and release resources.
@@ -431,6 +462,86 @@ Cypress.Commands.add(
         );
       }
       return orchestrator.traverseSubTree(selector, maxTabs);
+    });
+  }
+);
+
+/**
+ * Build an AuditContext from optional overrides, falling back to
+ * Cypress.spec.name and Cypress.env('projectName').
+ */
+function resolveAuditContext(
+  overrides?: Partial<AuditContext>
+): AuditContext {
+  return {
+    project: overrides?.project ?? Cypress.env('projectName') ?? '',
+    specName: overrides?.specName ?? Cypress.spec.name,
+  };
+}
+
+Cypress.Commands.add(
+  'a11yCheckFocusAndReport',
+  (context?: Partial<AuditContext>) => {
+    cy.wrap(null, { log: false }).then(async () => {
+      if (!orchestrator) {
+        throw new Error(
+          'A11y-Oracle not initialized. Call cy.initA11yOracle() first.'
+        );
+      }
+      const ctx = resolveAuditContext(context);
+      const state = await orchestrator.getState();
+      const issues = formatFocusIssues(state, ctx);
+
+      if (issues.length > 0) {
+        cy.task(
+          'log',
+          `[A11y-Oracle] ${issues.length} focus issue(s) detected on ${ctx.specName}`
+        );
+        cy.task('logOracleIssues', issues).then(() => {
+          if (Cypress.env('failOnErrors')) {
+            throw new Error(
+              `[A11y-Oracle] ${issues.length} focus indicator issue(s) detected: ${issues.map((issue) => issue.ruleId).join(', ')}`
+            );
+          }
+        });
+      }
+    });
+  }
+);
+
+Cypress.Commands.add(
+  'a11yCheckTrapAndReport',
+  (
+    selector: string,
+    maxTabs?: number,
+    context?: Partial<AuditContext>
+  ) => {
+    cy.wrap(null, { log: false }).then(async () => {
+      if (!orchestrator) {
+        throw new Error(
+          'A11y-Oracle not initialized. Call cy.initA11yOracle() first.'
+        );
+      }
+      const ctx = resolveAuditContext(context);
+      const result = await orchestrator.traverseSubTree(
+        selector,
+        maxTabs ?? 10
+      );
+      const issues = formatTrapIssue(result, selector, ctx);
+
+      if (issues.length > 0) {
+        cy.task(
+          'log',
+          `[A11y-Oracle] Keyboard trap detected in ${selector} on ${ctx.specName}`
+        );
+        cy.task('logOracleIssues', issues).then(() => {
+          if (Cypress.env('failOnErrors')) {
+            throw new Error(
+              `[A11y-Oracle] Keyboard trap detected in ${selector}`
+            );
+          }
+        });
+      }
     });
   }
 );

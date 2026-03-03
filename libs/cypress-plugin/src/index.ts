@@ -56,3 +56,16 @@ export type {
   TraversalResult,
   FocusIndicator,
 } from '@a11y-oracle/core-engine';
+
+// Re-export audit-formatter types for consumer convenience
+export type {
+  OracleIssue,
+  OracleNode,
+  OracleCheck,
+  OracleImpact,
+  OracleResultType,
+  AuditContext,
+} from '@a11y-oracle/audit-formatter';
+
+// Node-side reporting setup
+export { setupOracleReporting } from './lib/reporting.js';

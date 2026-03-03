@@ -22,6 +22,9 @@
       "path": "./libs/cypress-plugin"
     },
     {
+      "path": "./libs/audit-formatter"
+    },
+    {
       "path": "./apps/cypress-e2e"
     }
   ]

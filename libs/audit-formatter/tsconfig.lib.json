@@ -7,8 +7,7 @@
     "tsBuildInfoFile": "dist/tsconfig.lib.tsbuildinfo",
     "emitDeclarationOnly": false,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["es2022", "dom"],
-    "types": ["cypress"]
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"],
@@ -17,10 +16,7 @@
       "path": "../core-engine/tsconfig.lib.json"
     },
     {
-      "path": "../keyboard-engine/tsconfig.lib.json"
-    },
-    {
-      "path": "../audit-formatter/tsconfig.lib.json"
+      "path": "../focus-analyzer/tsconfig.lib.json"
     }
   ]
 }
