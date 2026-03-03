@@ -113,6 +113,69 @@ test('modal does not trap keyboard focus', async ({ page, a11y }) => {
 });
 ```
 
+### Audit and Issue Reporting
+
+Use `OracleAuditor` from `@a11y-oracle/audit-formatter` to automatically check WCAG rules on every interaction and accumulate any issues:
+
+```bash
+npm install -D @a11y-oracle/audit-formatter
+```
+
+```typescript
+import { test, expect } from '@a11y-oracle/playwright-plugin';
+import { OracleAuditor } from '@a11y-oracle/audit-formatter';
+
+test('all focus indicators pass oracle rules', async ({ page, a11y }) => {
+  await page.goto('/my-page.html');
+
+  const auditor = new OracleAuditor(a11y, {
+    project: 'my-app',
+    specName: 'navigation.spec.ts',
+  });
+
+  // Each pressKey() automatically checks focus-not-visible + focus-low-contrast
+  await auditor.pressKey('Tab');
+  await auditor.pressKey('Tab');
+  await auditor.pressKey('Tab');
+
+  // checkTrap() automatically checks keyboard-trap
+  await auditor.checkTrap('#modal-container');
+
+  // Assert no issues found across all interactions
+  expect(auditor.getIssues()).toHaveLength(0);
+});
+```
+
+To write issues to a JSON report file at the end of the suite:
+
+```typescript
+import { test } from '@a11y-oracle/playwright-plugin';
+import { OracleAuditor, type OracleIssue } from '@a11y-oracle/audit-formatter';
+import * as fs from 'fs';
+
+const allIssues: OracleIssue[] = [];
+
+test('check page focus indicators', async ({ page, a11y }) => {
+  await page.goto('/my-page.html');
+  const auditor = new OracleAuditor(a11y, {
+    project: 'my-app',
+    specName: 'nav.spec.ts',
+  });
+
+  await auditor.pressKey('Tab');
+  await auditor.pressKey('Tab');
+  allIssues.push(...auditor.getIssues());
+});
+
+test.afterAll(() => {
+  if (allIssues.length > 0) {
+    fs.writeFileSync('oracle-results.json', JSON.stringify(allIssues, null, 2));
+  }
+});
+```
+
+For detailed remediation guidance on each rule, see the [Remediation Guide](../../docs/REMEDIATION.md).
+
 ### Customizing Options
 
 Override speech engine options per test group using `test.use()`:

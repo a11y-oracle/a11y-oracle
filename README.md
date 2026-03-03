@@ -25,7 +25,7 @@ Beyond speech, A11y-Oracle also provides **unified accessibility state** that co
 
 ## Architecture
 
-A11y-Oracle is structured as an Nx monorepo with five publishable packages:
+A11y-Oracle is structured as an Nx monorepo with six publishable packages:
 
 ```
 a11y-oracle/
@@ -33,6 +33,7 @@ a11y-oracle/
     core-engine/          @a11y-oracle/core-engine
     keyboard-engine/      @a11y-oracle/keyboard-engine
     focus-analyzer/       @a11y-oracle/focus-analyzer
+    audit-formatter/      @a11y-oracle/audit-formatter
     playwright-plugin/    @a11y-oracle/playwright-plugin
     cypress-plugin/       @a11y-oracle/cypress-plugin
   apps/
@@ -47,15 +48,17 @@ a11y-oracle/
 keyboard-engine        (standalone — CDP key dispatch + focused element)
 focus-analyzer    ──→  keyboard-engine
 core-engine       ──→  keyboard-engine + focus-analyzer
+audit-formatter   ──→  core-engine + focus-analyzer (types only)
 playwright-plugin ──→  core-engine
-cypress-plugin    ──→  core-engine + keyboard-engine
+cypress-plugin    ──→  core-engine + keyboard-engine + audit-formatter
 ```
 
 - **`@a11y-oracle/core-engine`** — Framework-agnostic speech engine and unified `A11yOrchestrator`. Depends only on a `CDPSessionLike` interface.
 - **`@a11y-oracle/keyboard-engine`** — Native CDP keyboard dispatch with modifier key support and focused element introspection.
 - **`@a11y-oracle/focus-analyzer`** — Focus indicator CSS analysis (WCAG 2.4.12), tab order extraction, and keyboard trap detection (WCAG 2.1.2).
+- **`@a11y-oracle/audit-formatter`** — Converts findings to axe-core-compatible `OracleIssue` objects with WCAG rule metadata. Pure functions, no CDP dependency.
 - **`@a11y-oracle/playwright-plugin`** — Playwright test fixture wrapping the core engine.
-- **`@a11y-oracle/cypress-plugin`** — Cypress custom commands with iframe-aware CDP routing.
+- **`@a11y-oracle/cypress-plugin`** — Cypress custom commands with iframe-aware CDP routing and issue reporting.
 
 ## Quick Start
 
@@ -255,7 +258,7 @@ This is an Nx monorepo. Common tasks:
 # Build all libraries
 npx nx run-many --targets=build
 
-# Run all unit tests (200+ tests)
+# Run all unit tests (250+ tests)
 npx nx run-many --targets=test
 
 # Run core engine unit tests (129 tests)
@@ -266,6 +269,9 @@ npx nx test keyboard-engine
 
 # Run focus analyzer unit tests (56 tests)
 npx nx test focus-analyzer
+
+# Run audit formatter unit tests (49 tests)
+npx nx test audit-formatter
 
 # Run Playwright E2E tests (23 tests)
 npx nx e2e e2e-tests
@@ -284,6 +290,7 @@ npx nx graph
 | [`@a11y-oracle/core-engine`](libs/core-engine) | Framework-agnostic speech engine and unified orchestrator | [README](libs/core-engine/README.md) |
 | [`@a11y-oracle/keyboard-engine`](libs/keyboard-engine) | CDP keyboard dispatch with modifier support | [README](libs/keyboard-engine/README.md) |
 | [`@a11y-oracle/focus-analyzer`](libs/focus-analyzer) | Focus indicator analysis and keyboard trap detection | [README](libs/focus-analyzer/README.md) |
+| [`@a11y-oracle/audit-formatter`](libs/audit-formatter) | Axe-compatible issue formatting and WCAG audit rules | [README](libs/audit-formatter/README.md) |
 | [`@a11y-oracle/playwright-plugin`](libs/playwright-plugin) | Playwright test fixture and wrapper | [README](libs/playwright-plugin/README.md) |
 | [`@a11y-oracle/cypress-plugin`](libs/cypress-plugin) | Cypress custom commands | [README](libs/cypress-plugin/README.md) |
 
@@ -303,6 +310,10 @@ npx nx graph
 3. **Parallel Collection** — The orchestrator collects speech, focused element info, and focus indicator data in parallel via `Promise.all`.
 4. **Focus Indicator Analysis** — `Runtime.evaluate` extracts computed CSS properties (`outline`, `box-shadow`, `background-color`), parses colors, and calculates the WCAG contrast ratio.
 5. **Keyboard Trap Detection** — The analyzer focuses the first element in a container, then presses Tab repeatedly. If focus never escapes, it's a WCAG 2.1.2 failure.
+
+## Documentation
+
+- **[Remediation Guide](docs/REMEDIATION.md)** — Detailed guidance for each Oracle rule: what causes failures and how to fix them.
 
 ## License
 

@@ -142,6 +142,89 @@ it('modal does not trap keyboard focus', () => {
 });
 ```
 
+### Issue Reporting
+
+Check focus indicators and keyboard traps with automatic issue reporting. Issues are accumulated via `cy.task('logOracleIssues')` and can be written to a JSON report at the end of the run.
+
+```typescript
+describe('Accessibility audit', () => {
+  beforeEach(() => {
+    cy.visit('/my-page.html');
+    cy.initA11yOracle();
+  });
+
+  afterEach(() => {
+    cy.disposeA11yOracle();
+  });
+
+  it('focus indicators pass oracle rules', () => {
+    cy.a11yPressKey('Tab');
+    cy.a11yCheckFocusAndReport();   // checks + reports issues
+
+    cy.a11yPressKey('Tab');
+    cy.a11yCheckFocusAndReport();   // check each focused element
+  });
+
+  it('modal is not a keyboard trap', () => {
+    cy.get('#open-modal').click();
+    cy.a11yCheckTrapAndReport('#modal-dialog', 10);
+  });
+});
+```
+
+Set `Cypress.env('failOnErrors')` to `true` to fail the test immediately when issues are found:
+
+```typescript
+// cypress.config.ts
+export default defineConfig({
+  e2e: {
+    env: { failOnErrors: true },
+  },
+});
+```
+
+For detailed remediation guidance on each rule, see the [Remediation Guide](../../docs/REMEDIATION.md).
+
+### Node-Side Reporting Setup
+
+To accumulate issues across all specs and write a JSON report file, call `setupOracleReporting()` in your Cypress config:
+
+```typescript
+// cypress.config.ts
+import { defineConfig } from 'cypress';
+import { setupOracleReporting } from '@a11y-oracle/cypress-plugin';
+
+export default defineConfig({
+  e2e: {
+    setupNodeEvents(on, config) {
+      setupOracleReporting(on, config);
+    },
+    env: { projectName: 'my-app' },
+  },
+});
+```
+
+This registers the `logOracleIssues` task and writes `oracle-results-{projectName}.json` after the run completes.
+
+**Combining with axe-core violations:** If you want oracle issues in the same array as your axe-core violations (for a single upload to Beacon), add the task handler manually:
+
+```typescript
+setupNodeEvents(on, config) {
+  const allViolations: any[] = [];
+
+  on('task', {
+    logAxeViolations(violations) { allViolations.push(...violations); return null; },
+    logOracleIssues(issues) { allViolations.push(...issues); return null; },
+  });
+
+  on('after:run', () => {
+    if (allViolations.length > 0) {
+      fs.writeFileSync('a11y-results.json', JSON.stringify(allViolations, null, 2));
+    }
+  });
+},
+```
+
 ### Asserting on Landmarks and Structure
 
 Use `getA11yFullTreeSpeech()` to inspect elements that don't have focus:
@@ -277,6 +360,30 @@ cy.a11yTraverseSubTree('#modal', 20).then((result) => {
 });
 ```
 
+### Reporting Commands
+
+#### `cy.a11yCheckFocusAndReport(context?)`
+
+Check the current focused element's focus indicator and report any issues via `cy.task('logOracleIssues')`. Checks both `oracle/focus-not-visible` and `oracle/focus-low-contrast` rules.
+
+- `context` — Optional `Partial<AuditContext>`. Defaults to `{ project: Cypress.env('projectName'), specName: Cypress.spec.name }`.
+
+#### `cy.a11yCheckTrapAndReport(selector, maxTabs?, context?)`
+
+Check a container for keyboard traps and report any issues via `cy.task('logOracleIssues')`.
+
+- `selector` — CSS selector for the container to test.
+- `maxTabs` — Maximum Tab presses before declaring a trap. Default `10`.
+- `context` — Optional `Partial<AuditContext>`.
+
+#### `setupOracleReporting(on, config)`
+
+Node-side function (not a Cypress command). Call inside `setupNodeEvents()` to register the `logOracleIssues` task and write a JSON report in `after:run`. See [Node-Side Reporting Setup](#node-side-reporting-setup).
+
+```typescript
+import { setupOracleReporting } from '@a11y-oracle/cypress-plugin';
+```
+
 ### Lifecycle
 
 #### `cy.disposeA11yOracle()`
@@ -285,10 +392,11 @@ Dispose the plugin and release CDP resources. Typically called in `afterEach()`.
 
 ### Types
 
-All types are re-exported from `@a11y-oracle/core-engine`:
+Types are re-exported from `@a11y-oracle/core-engine` and `@a11y-oracle/audit-formatter`:
 
 ```typescript
 import type {
+  // Core engine types
   SpeechResult,
   A11yState,
   A11yFocusedElement,
@@ -299,6 +407,13 @@ import type {
   TabOrderEntry,
   TraversalResult,
   FocusIndicator,
+  // Audit formatter types
+  OracleIssue,
+  OracleNode,
+  OracleCheck,
+  OracleImpact,
+  OracleResultType,
+  AuditContext,
 } from '@a11y-oracle/cypress-plugin';
 ```
 
