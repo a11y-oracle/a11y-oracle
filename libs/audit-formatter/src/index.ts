@@ -18,10 +18,11 @@ export type {
   OracleResultType,
   OracleRule,
   AuditContext,
+  WcagLevel,
 } from './lib/types.js';
 
 // Rule definitions
-export { RULES, RULE_IDS, getRule } from './lib/rules.js';
+export { RULES, RULE_IDS, getRule, matchesWcagLevel } from './lib/rules.js';
 
 // Pure formatter functions
 export {

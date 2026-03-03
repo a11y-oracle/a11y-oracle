@@ -91,14 +91,14 @@ const snippet = htmlSnippetFromFocusedElement(state.focusedElement);
 
 A11y-Oracle enforces six WCAG rules:
 
-| Rule ID | WCAG Criterion | Level | Impact | Description |
-|---------|---------------|-------|--------|-------------|
-| `oracle/focus-not-visible` | [2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) | AA | `serious` | Focused element has no visible focus indicator |
-| `oracle/focus-low-contrast` | [2.4.12 Focus Appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html) | AA | `moderate` | Focus indicator contrast ratio is below 3:1 |
-| `oracle/keyboard-trap` | [2.1.2 No Keyboard Trap](https://www.w3.org/WAI/WCAG22/Understanding/no-keyboard-trap.html) | A | `critical` | Keyboard focus is trapped within a container |
-| `oracle/focus-missing-name` | [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html) | A | `serious` | Focused element has no accessible name |
-| `oracle/focus-generic-role` | [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html) | A | `serious` | Focused element has a generic or presentational role |
-| `oracle/positive-tabindex` | [2.4.3 Focus Order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html) | A | `serious` | Element uses a positive tabindex value |
+| Rule ID | WCAG Criterion | Since | Level | Tag | Impact | Description |
+|---------|---------------|-------|-------|-----|--------|-------------|
+| `oracle/focus-not-visible` | [2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) | 2.0 | AA | `wcag2aa` | `serious` | Focused element has no visible focus indicator |
+| `oracle/focus-low-contrast` | [2.4.12 Focus Appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html) | 2.2 | AA | `wcag22aa` | `moderate` | Focus indicator contrast ratio is below 3:1 |
+| `oracle/keyboard-trap` | [2.1.2 No Keyboard Trap](https://www.w3.org/WAI/WCAG22/Understanding/no-keyboard-trap.html) | 2.0 | A | `wcag2a` | `critical` | Keyboard focus is trapped within a container |
+| `oracle/focus-missing-name` | [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html) | 2.0 | A | `wcag2a` | `serious` | Focused element has no accessible name |
+| `oracle/focus-generic-role` | [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html) | 2.0 | A | `wcag2a` | `serious` | Focused element has a generic or presentational role |
+| `oracle/positive-tabindex` | [2.4.3 Focus Order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html) | 2.0 | A | `wcag2a` | `serious` | Element uses a positive tabindex value |
 
 `focus-not-visible` takes priority over `focus-low-contrast` — if no indicator exists, only the visibility rule fires (not both). `focus-generic-role` and `focus-missing-name` are mutually exclusive — generic roles trigger only the role check.
 
@@ -114,7 +114,7 @@ Check an `A11yState` for focus indicator issues.
 
 - **Parameters:**
   - `state: A11yState` — unified accessibility state from `pressKey()` or `getState()`
-  - `context: AuditContext` — `{ project: string, specName: string }`
+  - `context: AuditContext` — `{ project, specName, wcagLevel?, disabledRules? }`
 - **Returns:** `OracleIssue[]` — 0 or 1 issues
 - **Behavior:** Returns `oracle/focus-not-visible` if `isVisible === false`. Returns `oracle/focus-low-contrast` if visible but `meetsWCAG_AA === false`. Returns `[]` if passing or no focused element.
 
@@ -158,13 +158,24 @@ Convenience wrapper that runs all state-based checks: focus indicator, name, rol
 
 - **Parameters:** Same as `formatFocusIssues`
 - **Returns:** `OracleIssue[]`
+- **Behavior:** Applies `wcagLevel` filtering (default `'aa'`) and `disabledRules` suppression from `context`.
+
+#### `matchesWcagLevel(rule, level)`
+
+Check if a rule applies at a given WCAG conformance level.
+
+- **Parameters:**
+  - `rule: OracleRule` — rule metadata object
+  - `level: WcagLevel` — `'a'` or `'aa'`
+- **Returns:** `boolean` — `true` if the rule applies at the given level
+- **Behavior:** `'aa'` includes all rules. `'a'` includes only rules tagged with `wcag2a`.
 
 ### OracleAuditor
 
 #### `constructor(orchestrator, context)`
 
 - `orchestrator: OrchestratorLike` — any object with `pressKey()`, `getState()`, and `traverseSubTree()` methods
-- `context: AuditContext` — `{ project: string, specName: string }`
+- `context: AuditContext` — `{ project, specName, wcagLevel?, disabledRules? }`
 
 #### `pressKey(key, modifiers?): Promise<A11yState>`
 
@@ -244,7 +255,8 @@ import type {
   OracleImpact,        // 'minor' | 'moderate' | 'serious' | 'critical'
   OracleResultType,    // 'violation' | 'incomplete' | 'oracle'
   OracleRule,          // Rule metadata
-  AuditContext,        // { project: string, specName: string }
+  AuditContext,        // { project, specName, wcagLevel?, disabledRules? }
+  WcagLevel,           // 'wcag2a' | 'wcag2aa' | 'wcag21a' | 'wcag21aa' | 'wcag22a' | 'wcag22aa'
 } from '@a11y-oracle/audit-formatter';
 ```
 
@@ -252,10 +264,10 @@ import type {
 
 ```typescript
 // Types
-export type { OracleIssue, OracleNode, OracleCheck, OracleImpact, OracleResultType, OracleRule, AuditContext };
+export type { OracleIssue, OracleNode, OracleCheck, OracleImpact, OracleResultType, OracleRule, AuditContext, WcagLevel };
 
 // Rule definitions
-export { RULES, RULE_IDS, getRule };
+export { RULES, RULE_IDS, getRule, matchesWcagLevel };
 
 // Pure formatter functions
 export { formatFocusIssues, formatTrapIssue, formatNameIssues, formatRoleIssues, formatTabIndexIssues, formatAllIssues };

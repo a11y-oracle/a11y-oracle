@@ -141,3 +141,42 @@ describe('htmlSnippetFromTabOrderEntry', () => {
     expect(htmlSnippetFromTabOrderEntry(entry)).toBe('<input></input>');
   });
 });
+
+describe('HTML/CSS escaping', () => {
+  it('escapes quotes in id attribute for HTML snippet', () => {
+    const el = makeElement({ tag: 'BUTTON', id: 'btn"quotes' });
+    expect(htmlSnippetFromFocusedElement(el)).toContain('id="btn&quot;quotes"');
+  });
+
+  it('escapes <script> in ariaLabel', () => {
+    const el = makeElement({
+      tag: 'BUTTON',
+      ariaLabel: '<script>alert("xss")</script>',
+    });
+    expect(htmlSnippetFromFocusedElement(el)).toContain(
+      'aria-label="&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;"'
+    );
+    expect(htmlSnippetFromFocusedElement(el)).not.toContain('<script>');
+  });
+
+  it('escapes & in textContent', () => {
+    const el = makeElement({ tag: 'SPAN', textContent: 'A & B' });
+    expect(htmlSnippetFromFocusedElement(el)).toContain('A &amp; B');
+  });
+
+  it('escapes HTML in TabOrderEntry snippet', () => {
+    const entry = makeEntry({
+      tag: 'DIV',
+      id: 'x"y',
+      textContent: '<b>bold</b>',
+    });
+    const snippet = htmlSnippetFromTabOrderEntry(entry);
+    expect(snippet).toContain('id="x&quot;y"');
+    expect(snippet).toContain('&lt;b&gt;bold&lt;/b&gt;');
+  });
+
+  it('escapes quotes in role for CSS attribute selector', () => {
+    const entry = makeEntry({ tag: 'DIV', role: 'menu"item' });
+    expect(selectorFromTabOrderEntry(entry)).toBe('div[role="menu\\"item"]');
+  });
+});

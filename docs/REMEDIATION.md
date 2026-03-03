@@ -6,14 +6,14 @@ This guide provides an overview of each rule, with detailed remediation guidance
 
 ## Rules
 
-| Rule ID | WCAG Criterion | Level | Impact | Description | Guide |
-|---------|---------------|-------|--------|-------------|-------|
-| `oracle/focus-not-visible` | [2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) | AA | `serious` | Focused element has no visible focus indicator | [Remediation](./rules/focus-not-visible.md) |
-| `oracle/focus-low-contrast` | [2.4.12 Focus Appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html) | AA | `moderate` | Focus indicator contrast ratio is below 3:1 | [Remediation](./rules/focus-low-contrast.md) |
-| `oracle/keyboard-trap` | [2.1.2 No Keyboard Trap](https://www.w3.org/WAI/WCAG22/Understanding/no-keyboard-trap.html) | A | `critical` | Keyboard focus is trapped within a container | [Remediation](./rules/keyboard-trap.md) |
-| `oracle/focus-missing-name` | [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html) | A | `serious` | Focused element has no accessible name | [Remediation](./rules/focus-missing-name.md) |
-| `oracle/focus-generic-role` | [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html) | A | `serious` | Focused element has a generic or presentational role | [Remediation](./rules/focus-generic-role.md) |
-| `oracle/positive-tabindex` | [2.4.3 Focus Order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html) | A | `serious` | Element uses a positive tabindex value | [Remediation](./rules/positive-tabindex.md) |
+| Rule ID | WCAG Criterion | Since | Level | Tag | Impact | Description | Guide |
+|---------|---------------|-------|-------|-----|--------|-------------|-------|
+| `oracle/focus-not-visible` | [2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) | 2.0 | AA | `wcag2aa` | `serious` | Focused element has no visible focus indicator | [Remediation](./rules/focus-not-visible.md) |
+| `oracle/focus-low-contrast` | [2.4.12 Focus Appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html) | 2.2 | AA | `wcag22aa` | `moderate` | Focus indicator contrast ratio is below 3:1 | [Remediation](./rules/focus-low-contrast.md) |
+| `oracle/keyboard-trap` | [2.1.2 No Keyboard Trap](https://www.w3.org/WAI/WCAG22/Understanding/no-keyboard-trap.html) | 2.0 | A | `wcag2a` | `critical` | Keyboard focus is trapped within a container | [Remediation](./rules/keyboard-trap.md) |
+| `oracle/focus-missing-name` | [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html) | 2.0 | A | `wcag2a` | `serious` | Focused element has no accessible name | [Remediation](./rules/focus-missing-name.md) |
+| `oracle/focus-generic-role` | [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html) | 2.0 | A | `wcag2a` | `serious` | Focused element has a generic or presentational role | [Remediation](./rules/focus-generic-role.md) |
+| `oracle/positive-tabindex` | [2.4.3 Focus Order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html) | 2.0 | A | `wcag2a` | `serious` | Element uses a positive tabindex value | [Remediation](./rules/positive-tabindex.md) |
 
 ### Rule Categories
 
@@ -31,6 +31,46 @@ This guide provides an overview of each rule, with detailed remediation guidance
 
 - `focus-not-visible` takes priority over `focus-low-contrast` — if no indicator exists, only the visibility rule fires.
 - `focus-generic-role` and `focus-missing-name` are mutually exclusive — elements with generic/presentational roles only trigger the role check, not the name check, since fixing the role is the higher priority.
+
+---
+
+## Configuring WCAG Level
+
+By default, A11y-Oracle enforces all rules at `'wcag22aa'` (WCAG 2.2 Level AA). You can target a specific WCAG version and level via `AuditContext`:
+
+```typescript
+// Playwright — OracleAuditor
+const auditor = new OracleAuditor(a11y, {
+  project: 'my-app',
+  specName: 'test.ts',
+  wcagLevel: 'wcag22a',  // WCAG 2.2 Level A only (excludes AA rules)
+});
+
+// Cypress — env variable
+// cypress.config.ts
+env: { wcagLevel: 'wcag21aa' }  // WCAG 2.1 Level AA (excludes WCAG 2.2-only rules)
+```
+
+Supported values (matching axe-core tag convention):
+
+| Value | Includes |
+|-------|----------|
+| `'wcag2a'` | WCAG 2.0 Level A |
+| `'wcag2aa'` | WCAG 2.0 Level A + AA |
+| `'wcag21a'` | WCAG 2.0 A + 2.1 A |
+| `'wcag21aa'` | WCAG 2.0 A + AA, 2.1 A + AA |
+| `'wcag22a'` | WCAG 2.0 A, 2.1 A, 2.2 A |
+| `'wcag22aa'` | All rules (default) |
+
+To suppress specific rules, use `disabledRules`:
+
+```typescript
+const auditor = new OracleAuditor(a11y, {
+  project: 'my-app',
+  specName: 'test.ts',
+  disabledRules: ['oracle/positive-tabindex'],
+});
+```
 
 ---
 

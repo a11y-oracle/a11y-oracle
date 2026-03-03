@@ -53,6 +53,7 @@ export class OracleAuditor {
   private orchestrator: OrchestratorLike;
   private context: AuditContext;
   private issues: OracleIssue[] = [];
+  private previousKeys: Set<string> = new Set();
 
   constructor(orchestrator: OrchestratorLike, context: AuditContext) {
     this.orchestrator = orchestrator;
@@ -62,13 +63,28 @@ export class OracleAuditor {
   /**
    * Press a key via the orchestrator and analyze the resulting state
    * for focus issues. Returns the A11yState for further assertions.
+   *
+   * Deduplicates issues that match the previous `pressKey` call
+   * (same ruleId + selector), preventing noise when Tab doesn't
+   * move focus (e.g., end of page, trapped element).
    */
   async pressKey(
     key: string,
     modifiers?: Record<string, boolean>
   ): Promise<A11yState> {
     const state = await this.orchestrator.pressKey(key, modifiers);
-    this.issues.push(...formatAllIssues(state, this.context));
+    const newIssues = formatAllIssues(state, this.context);
+
+    const currentKeys = new Set<string>();
+    for (const issue of newIssues) {
+      const dedupKey = `${issue.ruleId}::${issue.selector}`;
+      currentKeys.add(dedupKey);
+      if (!this.previousKeys.has(dedupKey)) {
+        this.issues.push(issue);
+      }
+    }
+    this.previousKeys = currentKeys;
+
     return state;
   }
 
@@ -112,6 +128,7 @@ export class OracleAuditor {
    */
   clear(): void {
     this.issues = [];
+    this.previousKeys = new Set();
   }
 
   /**

@@ -280,4 +280,74 @@ describe('OracleAuditor', () => {
     expect(auditor.issueCount).toBe(1);
     expect(auditor.getIssues()[0].ruleId).toBe('oracle/positive-tabindex');
   });
+
+  it('deduplicates same element + same rule on consecutive calls', async () => {
+    const orch = mockOrchestrator([BAD_FOCUS_STATE, BAD_FOCUS_STATE]);
+    const auditor = new OracleAuditor(orch, {
+      project: 'app',
+      specName: 'test.ts',
+    });
+    await auditor.pressKey('Tab');
+    await auditor.pressKey('Tab');
+    // Same element with same issue on consecutive calls → 1 not 2
+    expect(auditor.issueCount).toBe(1);
+  });
+
+  it('keeps issues from different elements', async () => {
+    const badState2: A11yState = {
+      ...BAD_FOCUS_STATE,
+      focusedElement: {
+        ...BAD_FOCUS_STATE.focusedElement!,
+        id: 'other-btn',
+      },
+    };
+    const orch = mockOrchestrator([BAD_FOCUS_STATE, badState2]);
+    const auditor = new OracleAuditor(orch, {
+      project: 'app',
+      specName: 'test.ts',
+    });
+    await auditor.pressKey('Tab');
+    await auditor.pressKey('Tab');
+    expect(auditor.issueCount).toBe(2);
+  });
+
+  it('keeps non-consecutive occurrences (bad → good → bad)', async () => {
+    const orch = mockOrchestrator([BAD_FOCUS_STATE, GOOD_STATE, BAD_FOCUS_STATE]);
+    const auditor = new OracleAuditor(orch, {
+      project: 'app',
+      specName: 'test.ts',
+    });
+    await auditor.pressKey('Tab');
+    await auditor.pressKey('Tab');
+    await auditor.pressKey('Tab');
+    // bad → good → bad: both bad occurrences kept since they're non-consecutive
+    expect(auditor.issueCount).toBe(2);
+  });
+
+  it('clear() resets dedup state', async () => {
+    const orch = mockOrchestrator([BAD_FOCUS_STATE, BAD_FOCUS_STATE]);
+    const auditor = new OracleAuditor(orch, {
+      project: 'app',
+      specName: 'test.ts',
+    });
+    await auditor.pressKey('Tab');
+    expect(auditor.issueCount).toBe(1);
+
+    auditor.clear();
+    await auditor.pressKey('Tab');
+    // After clear, dedup state is reset so same issue is counted again
+    expect(auditor.issueCount).toBe(1);
+  });
+
+  it('wcag22a filters AA issues through auditor', async () => {
+    const orch = mockOrchestrator([BAD_FOCUS_STATE]);
+    const auditor = new OracleAuditor(orch, {
+      project: 'app',
+      specName: 'test.ts',
+      wcagLevel: 'wcag22a',
+    });
+    await auditor.pressKey('Tab');
+    // focus-not-visible is AA, should be filtered at Level A
+    expect(auditor.issueCount).toBe(0);
+  });
 });

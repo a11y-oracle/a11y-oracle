@@ -27,7 +27,7 @@ import type {
   OracleNode,
   AuditContext,
 } from './types.js';
-import { RULES } from './rules.js';
+import { RULES, matchesWcagLevel } from './rules.js';
 import {
   selectorFromFocusedElement,
   selectorFromTabOrderEntry,
@@ -234,7 +234,7 @@ export function formatRoleIssues(
   }
 
   const rawRole = state.speechResult.rawNode?.role?.value ?? '';
-  if (!GENERIC_ROLES.has(rawRole) || rawRole === '') {
+  if (rawRole === '' || !GENERIC_ROLES.has(rawRole)) {
     return [];
   }
 
@@ -298,12 +298,22 @@ export function formatAllIssues(
   state: A11yState,
   context: AuditContext
 ): OracleIssue[] {
-  return [
+  const level = context.wcagLevel ?? 'wcag22aa';
+  const disabledSet = context.disabledRules
+    ? new Set(context.disabledRules)
+    : null;
+
+  const allIssues = [
     ...formatFocusIssues(state, context),
     ...formatNameIssues(state, context),
     ...formatRoleIssues(state, context),
     ...formatTabIndexIssues(state, context),
   ];
+
+  return allIssues.filter((issue) => {
+    if (disabledSet?.has(issue.ruleId)) return false;
+    return matchesWcagLevel(RULES[issue.ruleId], level);
+  });
 }
 
 // ---- Internal helpers ----

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A11y Violations - A11y-Oracle Sandbox</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .violations-list {
+      list-style: none;
+      padding: 0;
+      max-width: 600px;
+      margin: 2rem auto;
+    }
+    .violations-list li {
+      margin: 1rem 0;
+    }
+    .violations-list button,
+    .violations-list div[tabindex] {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      border: 1px solid #999;
+      border-radius: 4px;
+      background: #f5f5f5;
+      cursor: pointer;
+    }
+    /* #no-indicator-btn: outline removed with no replacement → focus-not-visible */
+    #no-indicator-btn:focus {
+      outline: none;
+      box-shadow: none;
+    }
+    /* #good-btn: clean button with visible focus ring */
+    #good-btn:focus {
+      outline: 3px solid #0056b3;
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <!--
+    Intentional accessibility violations for testing audit rules.
+
+    Elements and expected violations:
+      #icon-btn        — button with empty aria-label → oracle/focus-missing-name
+      #generic-div     — div[tabindex=0] with no role → oracle/focus-generic-role
+      #positive-tab    — button with tabindex="5"     → oracle/positive-tabindex
+      #no-indicator-btn — button with outline:none     → oracle/focus-not-visible
+      #good-btn        — clean button (no violations)
+  -->
+  <main>
+    <h1>A11y Violations Fixture</h1>
+    <p>
+      This page contains intentional accessibility violations for testing
+      the A11y-Oracle audit rules.
+    </p>
+
+    <ul class="violations-list">
+      <li>
+        <button id="icon-btn" aria-label="">
+          <span aria-hidden="true">&#9733;</span>
+        </button>
+        <span>Missing accessible name (empty aria-label)</span>
+      </li>
+      <li>
+        <div id="generic-div" tabindex="0">Click me</div>
+        <span>Generic role (div with no ARIA role)</span>
+      </li>
+      <li>
+        <button id="positive-tab" tabindex="5">Priority Button</button>
+        <span>Positive tabindex</span>
+      </li>
+      <li>
+        <button id="no-indicator-btn">No Focus Indicator</button>
+        <span>Focus indicator removed via CSS</span>
+      </li>
+      <li>
+        <button id="good-btn">Good Button</button>
+        <span>Clean button with visible focus ring (no violations)</span>
+      </li>
+    </ul>
+  </main>
+</body>
+</html>

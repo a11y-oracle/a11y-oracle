@@ -117,7 +117,7 @@ declare global {
        * `cy.task('logOracleIssues')`.
        *
        * @param selector - CSS selector for the container to test.
-       * @param maxTabs - Maximum Tab presses before declaring a trap. Default 10.
+       * @param maxTabs - Maximum Tab presses before declaring a trap. Default 50.
        * @param context - Optional audit context.
        */
       a11yCheckTrapAndReport(
@@ -476,6 +476,9 @@ function resolveAuditContext(
   return {
     project: overrides?.project ?? Cypress.env('projectName') ?? '',
     specName: overrides?.specName ?? Cypress.spec.name,
+    wcagLevel: overrides?.wcagLevel ?? Cypress.env('wcagLevel') ?? undefined,
+    disabledRules:
+      overrides?.disabledRules ?? Cypress.env('disabledRules') ?? undefined,
   };
 }
 
@@ -525,7 +528,7 @@ Cypress.Commands.add(
       const ctx = resolveAuditContext(context);
       const result = await orchestrator.traverseSubTree(
         selector,
-        maxTabs ?? 10
+        maxTabs ?? 50
       );
       const issues = formatTrapIssue(result, selector, ctx);
 

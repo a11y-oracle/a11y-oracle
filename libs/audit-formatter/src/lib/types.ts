@@ -100,6 +100,22 @@ export interface OracleIssue {
 }
 
 /**
+ * WCAG conformance standard for filtering rules.
+ *
+ * Values follow axe-core's tag convention (no decimals).
+ * Each standard includes all rules from earlier versions at the same
+ * or lower level. For example, `'wcag21aa'` includes WCAG 2.0 Level A,
+ * WCAG 2.0 Level AA, WCAG 2.1 Level A, and WCAG 2.1 Level AA rules.
+ */
+export type WcagLevel =
+  | 'wcag2a'    // WCAG 2.0 Level A
+  | 'wcag2aa'   // WCAG 2.0 Level AA
+  | 'wcag21a'   // WCAG 2.1 Level A
+  | 'wcag21aa'  // WCAG 2.1 Level AA
+  | 'wcag22a'   // WCAG 2.2 Level A
+  | 'wcag22aa'; // WCAG 2.2 Level AA (default)
+
+/**
  * Context required by all formatter functions.
  * Provided by the test runner or OracleAuditor.
  */
@@ -108,6 +124,10 @@ export interface AuditContext {
   project: string;
   /** Name of the spec/test file producing these findings. */
   specName: string;
+  /** Target WCAG standard. Default 'wcag22aa' (all rules). */
+  wcagLevel?: WcagLevel;
+  /** Rule IDs to suppress (e.g. ['oracle/positive-tabindex']). */
+  disabledRules?: string[];
 }
 
 /**

@@ -8,7 +8,7 @@
  * `ruleId` (e.g., `oracle/focus-not-visible`).
  */
 
-import type { OracleRule } from './types.js';
+import type { OracleRule, WcagLevel } from './types.js';
 
 /**
  * All defined Oracle audit rules.
@@ -48,7 +48,7 @@ export const RULES: Record<string, OracleRule> = {
       '3:1 against the background, meeting WCAG 2.4.12 (Focus Appearance) ' +
       'AA requirements.',
     impact: 'moderate',
-    tags: ['wcag2aa', 'wcag2412', 'cat.keyboard', 'oracle'],
+    tags: ['wcag22aa', 'wcag2412', 'cat.keyboard', 'oracle'],
     helpUrl:
       'https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html',
     failureSummary:
@@ -129,6 +129,34 @@ export function getRule(ruleId: string): OracleRule {
     throw new Error(`Unknown oracle rule: ${ruleId}`);
   }
   return rule;
+}
+
+/**
+ * Map each WCAG standard to the set of rule-level tags it includes.
+ *
+ * Each standard includes all rules from earlier versions at the same
+ * or lower conformance level. For example, `'wcag21aa'` includes
+ * rules tagged `wcag2a`, `wcag2aa`, `wcag21a`, and `wcag21aa`.
+ */
+const STANDARD_TAG_MAP: Record<WcagLevel, ReadonlySet<string>> = {
+  'wcag2a':   new Set(['wcag2a']),
+  'wcag2aa':  new Set(['wcag2a', 'wcag2aa']),
+  'wcag21a':  new Set(['wcag2a', 'wcag21a']),
+  'wcag21aa': new Set(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']),
+  'wcag22a':  new Set(['wcag2a', 'wcag21a', 'wcag22a']),
+  'wcag22aa': new Set(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22a', 'wcag22aa']),
+};
+
+/**
+ * Check if a rule applies at the given WCAG standard.
+ *
+ * A rule matches if any of its tags appear in the set of tags
+ * covered by the given standard. For example, a rule tagged
+ * `wcag22aa` matches `'wcag22aa'` but not `'wcag21aa'`.
+ */
+export function matchesWcagLevel(rule: OracleRule, level: WcagLevel): boolean {
+  const allowedTags = STANDARD_TAG_MAP[level];
+  return rule.tags.some((tag) => allowedTags.has(tag));
 }
 
 /** All defined rule IDs. */

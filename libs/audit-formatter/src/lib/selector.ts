@@ -10,6 +10,21 @@
 import type { A11yFocusedElement } from '@a11y-oracle/core-engine';
 import type { TabOrderEntry } from '@a11y-oracle/focus-analyzer';
 
+/** Escape HTML special characters in attribute values and text content. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Escape characters that break CSS attribute selectors. */
+function escapeCssAttr(str: string): string {
+  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 /**
  * Build a CSS selector from an A11yFocusedElement.
  * Priority: `#id` > `tag.class1.class2` > `tag`
@@ -47,7 +62,7 @@ export function selectorFromTabOrderEntry(
   }
   const tag = entry.tag.toLowerCase();
   if (entry.role) {
-    return `${tag}[role="${entry.role}"]`;
+    return `${tag}[role="${escapeCssAttr(entry.role)}"]`;
   }
   return tag;
 }
@@ -66,13 +81,13 @@ export function htmlSnippetFromFocusedElement(
 ): string {
   const tag = el.tag.toLowerCase();
   const attrs: string[] = [];
-  if (el.id) attrs.push(`id="${el.id}"`);
-  if (el.className) attrs.push(`class="${el.className}"`);
-  if (el.role) attrs.push(`role="${el.role}"`);
-  if (el.ariaLabel) attrs.push(`aria-label="${el.ariaLabel}"`);
+  if (el.id) attrs.push(`id="${escapeHtml(el.id)}"`);
+  if (el.className) attrs.push(`class="${escapeHtml(el.className)}"`);
+  if (el.role) attrs.push(`role="${escapeHtml(el.role)}"`);
+  if (el.ariaLabel) attrs.push(`aria-label="${escapeHtml(el.ariaLabel)}"`);
 
   const attrStr = attrs.length > 0 ? ` ${attrs.join(' ')}` : '';
-  const content = el.textContent ? el.textContent.slice(0, 80) : '';
+  const content = el.textContent ? escapeHtml(el.textContent.slice(0, 80)) : '';
   return `<${tag}${attrStr}>${content}</${tag}>`;
 }
 
@@ -84,10 +99,10 @@ export function htmlSnippetFromTabOrderEntry(
 ): string {
   const tag = entry.tag.toLowerCase();
   const attrs: string[] = [];
-  if (entry.id) attrs.push(`id="${entry.id}"`);
-  if (entry.role) attrs.push(`role="${entry.role}"`);
+  if (entry.id) attrs.push(`id="${escapeHtml(entry.id)}"`);
+  if (entry.role) attrs.push(`role="${escapeHtml(entry.role)}"`);
 
   const attrStr = attrs.length > 0 ? ` ${attrs.join(' ')}` : '';
-  const content = entry.textContent ? entry.textContent.slice(0, 80) : '';
+  const content = entry.textContent ? escapeHtml(entry.textContent.slice(0, 80)) : '';
   return `<${tag}${attrStr}>${content}</${tag}>`;
 }

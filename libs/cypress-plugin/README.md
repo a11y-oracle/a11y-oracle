@@ -172,6 +172,34 @@ describe('Accessibility audit', () => {
 });
 ```
 
+#### WCAG Level and Rule Configuration
+
+Filter issues by WCAG conformance level or disable specific rules via Cypress env:
+
+```typescript
+// cypress.config.ts
+export default defineConfig({
+  e2e: {
+    env: {
+      wcagLevel: 'wcag21aa',                       // WCAG 2.1 Level AA (default: 'wcag22aa')
+      disabledRules: ['oracle/positive-tabindex'],  // Suppress specific rules
+    },
+  },
+});
+```
+
+Supported `wcagLevel` values (matching axe-core tag format):
+- `'wcag2a'` / `'wcag2aa'` — WCAG 2.0
+- `'wcag21a'` / `'wcag21aa'` — WCAG 2.1
+- `'wcag22a'` / `'wcag22aa'` — WCAG 2.2 (default)
+
+Or override per-command:
+
+```typescript
+cy.a11yCheckFocusAndReport({ wcagLevel: 'wcag22a' });
+cy.a11yCheckFocusAndReport({ disabledRules: ['oracle/focus-low-contrast'] });
+```
+
 Set `Cypress.env('failOnErrors')` to `true` to fail the test immediately when issues are found:
 
 ```typescript
@@ -366,14 +394,14 @@ cy.a11yTraverseSubTree('#modal', 20).then((result) => {
 
 Check the current focused element and report any issues via `cy.task('logOracleIssues')`. Runs all state-based rules: `oracle/focus-not-visible`, `oracle/focus-low-contrast`, `oracle/focus-missing-name`, `oracle/focus-generic-role`, and `oracle/positive-tabindex`.
 
-- `context` — Optional `Partial<AuditContext>`. Defaults to `{ project: Cypress.env('projectName'), specName: Cypress.spec.name }`.
+- `context` — Optional `Partial<AuditContext>`. Defaults to `{ project: Cypress.env('projectName'), specName: Cypress.spec.name, wcagLevel: Cypress.env('wcagLevel'), disabledRules: Cypress.env('disabledRules') }`.
 
 #### `cy.a11yCheckTrapAndReport(selector, maxTabs?, context?)`
 
 Check a container for keyboard traps and report any issues via `cy.task('logOracleIssues')`.
 
 - `selector` — CSS selector for the container to test.
-- `maxTabs` — Maximum Tab presses before declaring a trap. Default `10`.
+- `maxTabs` — Maximum Tab presses before declaring a trap. Default `50`.
 - `context` — Optional `Partial<AuditContext>`.
 
 #### `setupOracleReporting(on, config)`

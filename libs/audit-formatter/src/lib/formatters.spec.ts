@@ -144,12 +144,12 @@ describe('formatFocusIssues', () => {
     });
     const issues = formatFocusIssues(state, CTX);
     const node = issues[0].nodes[0];
-    expect(node.html).toBeTruthy();
+    expect(node.html).toContain('id="nav-btn"');
     expect(node.target).toEqual(['#nav-btn']);
     expect(node.any).toEqual([]);
     expect(node.all).toEqual([]);
     expect(node.none).toHaveLength(1);
-    expect(node.failureSummary).toBeTruthy();
+    expect(node.failureSummary).toContain('Fix any of the following');
   });
 
   it('uses tag.class selector when no id', () => {
@@ -633,5 +633,209 @@ describe('formatAllIssues', () => {
     expect(ruleIds).toContain('oracle/focus-not-visible');
     expect(ruleIds).toContain('oracle/focus-missing-name');
     expect(ruleIds).toContain('oracle/positive-tabindex');
+  });
+
+  it('wcag22a filters out AA rules', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      focusIndicator: {
+        isVisible: false,
+        contrastRatio: null,
+        meetsWCAG_AA: false,
+      },
+    });
+    const issues = formatAllIssues(state, {
+      ...CTX,
+      wcagLevel: 'wcag22a',
+    });
+    expect(issues).toHaveLength(0);
+  });
+
+  it('wcag22aa includes all rules (default behavior)', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      focusIndicator: {
+        isVisible: false,
+        contrastRatio: null,
+        meetsWCAG_AA: false,
+      },
+    });
+    const issues = formatAllIssues(state, {
+      ...CTX,
+      wcagLevel: 'wcag22aa',
+    });
+    expect(issues).toHaveLength(1);
+    expect(issues[0].ruleId).toBe('oracle/focus-not-visible');
+  });
+
+  it('undefined wcagLevel defaults to wcag22aa (includes all)', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      focusIndicator: {
+        isVisible: false,
+        contrastRatio: null,
+        meetsWCAG_AA: false,
+      },
+    });
+    const issues = formatAllIssues(state, CTX);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].ruleId).toBe('oracle/focus-not-visible');
+  });
+
+  it('wcag22a keeps Level A rules', () => {
+    const state = makeState({
+      focusedElement: { ...FOCUSED_BUTTON, tabIndex: 5 },
+      speechResult: makeSpeechResult(),
+      focusIndicator: {
+        isVisible: true,
+        contrastRatio: 5,
+        meetsWCAG_AA: true,
+      },
+    });
+    const issues = formatAllIssues(state, {
+      ...CTX,
+      wcagLevel: 'wcag22a',
+    });
+    expect(issues).toHaveLength(1);
+    expect(issues[0].ruleId).toBe('oracle/positive-tabindex');
+  });
+
+  it('wcag21aa includes focus-not-visible but excludes focus-low-contrast', () => {
+    // focus-not-visible is WCAG 2.0 AA, focus-low-contrast is WCAG 2.2 AA
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      focusIndicator: {
+        isVisible: true,
+        contrastRatio: 2.1,
+        meetsWCAG_AA: false,
+      },
+    });
+    const issues = formatAllIssues(state, {
+      ...CTX,
+      wcagLevel: 'wcag21aa',
+    });
+    // focus-low-contrast should be filtered (WCAG 2.2)
+    expect(issues).toHaveLength(0);
+
+    // Now with isVisible: false (triggers focus-not-visible, WCAG 2.0 AA)
+    const state2 = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      focusIndicator: {
+        isVisible: false,
+        contrastRatio: null,
+        meetsWCAG_AA: false,
+      },
+    });
+    const issues2 = formatAllIssues(state2, {
+      ...CTX,
+      wcagLevel: 'wcag21aa',
+    });
+    expect(issues2).toHaveLength(1);
+    expect(issues2[0].ruleId).toBe('oracle/focus-not-visible');
+  });
+
+  it('disabledRules suppresses specified rules', () => {
+    const state = makeState({
+      focusedElement: { ...FOCUSED_BUTTON, tabIndex: 5 },
+      speechResult: makeSpeechResult({ name: '' }),
+      focusIndicator: {
+        isVisible: true,
+        contrastRatio: 5,
+        meetsWCAG_AA: true,
+      },
+    });
+    const issues = formatAllIssues(state, {
+      ...CTX,
+      disabledRules: ['oracle/positive-tabindex'],
+    });
+    const ruleIds = issues.map((i) => i.ruleId);
+    expect(ruleIds).not.toContain('oracle/positive-tabindex');
+    expect(ruleIds).toContain('oracle/focus-missing-name');
+  });
+
+  it('disabledRules + wcagLevel work together', () => {
+    const state = makeState({
+      focusedElement: { ...FOCUSED_BUTTON, tabIndex: 5 },
+      speechResult: makeSpeechResult({ name: '' }),
+      focusIndicator: {
+        isVisible: false,
+        contrastRatio: null,
+        meetsWCAG_AA: false,
+      },
+    });
+    const issues = formatAllIssues(state, {
+      ...CTX,
+      wcagLevel: 'wcag22a',
+      disabledRules: ['oracle/positive-tabindex'],
+    });
+    const ruleIds = issues.map((i) => i.ruleId);
+    // AA rule (focus-not-visible) filtered by level, positive-tabindex disabled
+    expect(ruleIds).not.toContain('oracle/focus-not-visible');
+    expect(ruleIds).not.toContain('oracle/positive-tabindex');
+    expect(ruleIds).toContain('oracle/focus-missing-name');
+  });
+});
+
+describe('boundary tests', () => {
+  it('contrast ratio exactly 3.0 should pass (meetsWCAG_AA true)', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      focusIndicator: {
+        isVisible: true,
+        contrastRatio: 3.0,
+        meetsWCAG_AA: true,
+      },
+    });
+    expect(formatFocusIssues(state, CTX)).toEqual([]);
+  });
+
+  it('speechResult with rawNode undefined does not throw in formatNameIssues', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({ rawNode: undefined }),
+    });
+    expect(() => formatNameIssues(state, CTX)).not.toThrow();
+  });
+
+  it('formatNameIssues and formatRoleIssues never both fire for same state', () => {
+    const genericState = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({
+        name: '',
+        rawNode: {
+          nodeId: '1',
+          ignored: false,
+          role: { type: 'role', value: 'generic' },
+          name: { type: 'computedString', value: '' },
+          properties: [],
+          childIds: [],
+        },
+      }),
+    });
+    const nameIssues = formatNameIssues(genericState, CTX);
+    const roleIssues = formatRoleIssues(genericState, CTX);
+    // With a generic role, only role issues fire, not name issues
+    expect(nameIssues).toHaveLength(0);
+    expect(roleIssues).toHaveLength(1);
+
+    const buttonState = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({
+        name: '',
+        rawNode: {
+          nodeId: '1',
+          ignored: false,
+          role: { type: 'role', value: 'button' },
+          name: { type: 'computedString', value: '' },
+          properties: [],
+          childIds: [],
+        },
+      }),
+    });
+    const nameIssues2 = formatNameIssues(buttonState, CTX);
+    const roleIssues2 = formatRoleIssues(buttonState, CTX);
+    // With a meaningful role, only name issues fire, not role issues
+    expect(nameIssues2).toHaveLength(1);
+    expect(roleIssues2).toHaveLength(0);
   });
 });

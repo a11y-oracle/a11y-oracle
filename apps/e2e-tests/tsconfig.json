@@ -7,6 +7,9 @@
   "include": ["src/**/*.ts", "playwright.config.ts"],
   "references": [
     {
+      "path": "../../libs/audit-formatter"
+    },
+    {
       "path": "../../libs/playwright-plugin"
     }
   ]

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RULES, RULE_IDS, getRule } from './rules.js';
+import { RULES, RULE_IDS, getRule, matchesWcagLevel } from './rules.js';
 
 describe('RULES', () => {
   it('defines exactly six rules', () => {
@@ -71,5 +71,49 @@ describe('getRule', () => {
     expect(() => getRule('oracle/nonexistent')).toThrow(
       'Unknown oracle rule: oracle/nonexistent'
     );
+  });
+});
+
+describe('matchesWcagLevel', () => {
+  it('wcag22aa (default) includes all rules', () => {
+    for (const id of RULE_IDS) {
+      expect(matchesWcagLevel(RULES[id], 'wcag22aa')).toBe(true);
+    }
+  });
+
+  it('wcag22a includes only Level A rules', () => {
+    expect(matchesWcagLevel(RULES['oracle/keyboard-trap'], 'wcag22a')).toBe(true);
+    expect(matchesWcagLevel(RULES['oracle/focus-missing-name'], 'wcag22a')).toBe(true);
+    expect(matchesWcagLevel(RULES['oracle/focus-generic-role'], 'wcag22a')).toBe(true);
+    expect(matchesWcagLevel(RULES['oracle/positive-tabindex'], 'wcag22a')).toBe(true);
+  });
+
+  it('wcag22a excludes AA-only rules', () => {
+    expect(matchesWcagLevel(RULES['oracle/focus-not-visible'], 'wcag22a')).toBe(false);
+    expect(matchesWcagLevel(RULES['oracle/focus-low-contrast'], 'wcag22a')).toBe(false);
+  });
+
+  it('wcag21aa includes focus-not-visible (WCAG 2.0 AA) but excludes focus-low-contrast (WCAG 2.2 AA)', () => {
+    expect(matchesWcagLevel(RULES['oracle/focus-not-visible'], 'wcag21aa')).toBe(true);
+    expect(matchesWcagLevel(RULES['oracle/focus-low-contrast'], 'wcag21aa')).toBe(false);
+  });
+
+  it('wcag21aa includes all Level A rules', () => {
+    expect(matchesWcagLevel(RULES['oracle/keyboard-trap'], 'wcag21aa')).toBe(true);
+    expect(matchesWcagLevel(RULES['oracle/focus-missing-name'], 'wcag21aa')).toBe(true);
+    expect(matchesWcagLevel(RULES['oracle/focus-generic-role'], 'wcag21aa')).toBe(true);
+    expect(matchesWcagLevel(RULES['oracle/positive-tabindex'], 'wcag21aa')).toBe(true);
+  });
+
+  it('wcag2aa includes WCAG 2.0 rules but not WCAG 2.2 rules', () => {
+    expect(matchesWcagLevel(RULES['oracle/focus-not-visible'], 'wcag2aa')).toBe(true);
+    expect(matchesWcagLevel(RULES['oracle/focus-low-contrast'], 'wcag2aa')).toBe(false);
+    expect(matchesWcagLevel(RULES['oracle/keyboard-trap'], 'wcag2aa')).toBe(true);
+  });
+
+  it('wcag2a includes only WCAG 2.0 Level A rules', () => {
+    expect(matchesWcagLevel(RULES['oracle/keyboard-trap'], 'wcag2a')).toBe(true);
+    expect(matchesWcagLevel(RULES['oracle/focus-not-visible'], 'wcag2a')).toBe(false);
+    expect(matchesWcagLevel(RULES['oracle/focus-low-contrast'], 'wcag2a')).toBe(false);
   });
 });
