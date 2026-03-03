@@ -25,6 +25,11 @@ function escapeCssAttr(str: string): string {
   return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
+/** Escape an ID for use in a CSS `#id` selector. */
+function escapeCssId(id: string): string {
+  return id.replace(/([^\w-])/g, '\\$1');
+}
+
 /**
  * Build a CSS selector from an A11yFocusedElement.
  * Priority: `#id` > `tag.class1.class2` > `tag`
@@ -33,7 +38,7 @@ export function selectorFromFocusedElement(
   el: A11yFocusedElement
 ): string {
   if (el.id) {
-    return `#${el.id}`;
+    return `#${escapeCssId(el.id)}`;
   }
   const tag = el.tag.toLowerCase();
   if (el.className) {
@@ -58,7 +63,7 @@ export function selectorFromTabOrderEntry(
   entry: TabOrderEntry
 ): string {
   if (entry.id) {
-    return `#${entry.id}`;
+    return `#${escapeCssId(entry.id)}`;
   }
   const tag = entry.tag.toLowerCase();
   if (entry.role) {

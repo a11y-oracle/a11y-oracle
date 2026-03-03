@@ -19,20 +19,20 @@
 
 import { test as base } from '@playwright/test';
 import { A11yOracle } from './a11y-oracle.js';
-import type { SpeechEngineOptions } from '@a11y-oracle/core-engine';
+import type { A11yOrchestratorOptions } from '@a11y-oracle/core-engine';
 
 /**
  * Type definition for the A11y-Oracle Playwright fixtures.
  *
  * - `a11y`: An initialized {@link A11yOracle} instance, ready to use.
- * - `a11yOptions`: Configuration options for the speech engine.
- *   Override in `test.use()` to customize behavior.
+ * - `a11yOptions`: Configuration options for the orchestrator (speech engine
+ *   and focus analysis). Override in `test.use()` to customize behavior.
  */
 export type A11yOracleFixtures = {
   /** An initialized A11yOracle instance for the current page. */
   a11y: A11yOracle;
-  /** Speech engine options. Override via `test.use({ a11yOptions: { ... } })`. */
-  a11yOptions: SpeechEngineOptions;
+  /** Orchestrator options. Override via `test.use({ a11yOptions: { ... } })`. */
+  a11yOptions: A11yOrchestratorOptions;
 };
 
 /**

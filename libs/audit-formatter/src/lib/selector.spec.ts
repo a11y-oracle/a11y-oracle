@@ -180,3 +180,30 @@ describe('HTML/CSS escaping', () => {
     expect(selectorFromTabOrderEntry(entry)).toBe('div[role="menu\\"item"]');
   });
 });
+
+describe('CSS ID escaping', () => {
+  it('escapes colons in ID selector', () => {
+    const el = makeElement({ tag: 'BUTTON', id: 'my:id' });
+    expect(selectorFromFocusedElement(el)).toBe('#my\\:id');
+  });
+
+  it('escapes dots in ID selector', () => {
+    const el = makeElement({ tag: 'INPUT', id: 'item.1' });
+    expect(selectorFromFocusedElement(el)).toBe('#item\\.1');
+  });
+
+  it('escapes brackets in ID selector', () => {
+    const el = makeElement({ tag: 'DIV', id: 'field[0]' });
+    expect(selectorFromFocusedElement(el)).toBe('#field\\[0\\]');
+  });
+
+  it('leaves normal IDs unchanged', () => {
+    const el = makeElement({ tag: 'BUTTON', id: 'submit-btn_2' });
+    expect(selectorFromFocusedElement(el)).toBe('#submit-btn_2');
+  });
+
+  it('escapes IDs in TabOrderEntry selectors', () => {
+    const entry = makeEntry({ tag: 'INPUT', id: 'form:email' });
+    expect(selectorFromTabOrderEntry(entry)).toBe('#form\\:email');
+  });
+});

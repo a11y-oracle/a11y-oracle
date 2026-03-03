@@ -36,6 +36,27 @@ describe('Audit Violations Fixture', () => {
     });
   });
 
+  it('#icon-btn has empty accessible name', () => {
+    cy.get('#icon-btn').focus();
+    cy.a11yState().then((state) => {
+      expect(state.focusedElement).to.not.be.null;
+      // aria-label="" means the computed name is empty
+      expect(state.speechResult).to.not.be.null;
+      expect(state.speechResult!.name.trim()).to.equal('');
+    });
+  });
+
+  it('#generic-div has generic role', () => {
+    cy.get('#generic-div').focus();
+    cy.a11yState().then((state) => {
+      expect(state.focusedElement).to.not.be.null;
+      // div with no ARIA role has generic/none/presentation role in AX tree
+      expect(state.speechResult).to.not.be.null;
+      const rawRole = state.speechResult!.rawNode?.role?.value ?? '';
+      expect(['generic', 'none', 'presentation']).to.include(rawRole);
+    });
+  });
+
   it('#good-btn passes all checks', () => {
     cy.get('#good-btn').focus();
     cy.a11yState().then((state) => {

@@ -233,7 +233,7 @@ async function findAUTContextId(frameId: string): Promise<number | null> {
     const result = await sendCDP('Page.createIsolatedWorld', {
       frameId,
       worldName: 'a11y-oracle',
-      grantUniveralAccess: true,
+      grantUniversalAccess: true,
     });
     return result.executionContextId;
   } catch {
@@ -246,47 +246,53 @@ async function findAUTContextId(frameId: string): Promise<number | null> {
  * reach the AUT's content instead of the Cypress runner UI.
  */
 async function focusAUTFrame(): Promise<void> {
-  // Get the runner page's document
-  const doc = await sendCDP('DOM.getDocument', { depth: 0 });
+  try {
+    // Get the runner page's document
+    const doc = await sendCDP('DOM.getDocument', { depth: 0 });
+    if (!doc?.root?.nodeId) return;
 
-  // Find all iframes and focus the AUT one
-  const iframes = await sendCDP('DOM.querySelectorAll', {
-    nodeId: doc.root.nodeId,
-    selector: 'iframe',
-  });
+    // Find all iframes and focus the AUT one
+    const iframes = await sendCDP('DOM.querySelectorAll', {
+      nodeId: doc.root.nodeId,
+      selector: 'iframe',
+    });
+    if (!iframes?.nodeIds) return;
 
-  for (const nodeId of iframes.nodeIds) {
-    try {
-      const attrs = await sendCDP('DOM.getAttributes', { nodeId });
-      const attrList: string[] = attrs.attributes;
+    for (const nodeId of iframes.nodeIds) {
+      try {
+        const attrs = await sendCDP('DOM.getAttributes', { nodeId });
+        const attrList: string[] = attrs.attributes;
 
-      // Find the iframe whose src matches the AUT URL
-      const srcIndex = attrList.indexOf('src');
-      if (srcIndex >= 0) {
-        const src = attrList[srcIndex + 1];
-        if (
-          src &&
-          !src.includes('/__/') &&
-          !src.includes('__cypress') &&
-          src !== 'about:blank'
-        ) {
-          await sendCDP('DOM.focus', { nodeId });
-          return;
+        // Find the iframe whose src matches the AUT URL
+        const srcIndex = attrList.indexOf('src');
+        if (srcIndex >= 0) {
+          const src = attrList[srcIndex + 1];
+          if (
+            src &&
+            !src.includes('/__/') &&
+            !src.includes('__cypress') &&
+            src !== 'about:blank'
+          ) {
+            await sendCDP('DOM.focus', { nodeId });
+            return;
+          }
         }
-      }
 
-      // Also check by name attribute (Cypress names AUT frames)
-      const nameIndex = attrList.indexOf('name');
-      if (nameIndex >= 0) {
-        const name = attrList[nameIndex + 1];
-        if (name && name.startsWith('Your project:')) {
-          await sendCDP('DOM.focus', { nodeId });
-          return;
+        // Also check by name attribute (Cypress names AUT frames)
+        const nameIndex = attrList.indexOf('name');
+        if (nameIndex >= 0) {
+          const name = attrList[nameIndex + 1];
+          if (name && name.startsWith('Your project:')) {
+            await sendCDP('DOM.focus', { nodeId });
+            return;
+          }
         }
+      } catch {
+        // Skip iframes we can't inspect
       }
-    } catch {
-      // Skip iframes we can't inspect
     }
+  } catch {
+    // DOM query failed — frame focus is best-effort
   }
 }
 

@@ -37,6 +37,29 @@ test.describe('Audit Violations Fixture', () => {
     expect(state.focusedElement!.tabIndex).toBeGreaterThan(0);
   });
 
+  test('#icon-btn triggers focus-missing-name', async ({ a11y, page }) => {
+    await page.focus('#icon-btn');
+    await page.waitForTimeout(50);
+
+    const state = await a11y.getA11yState();
+    expect(state.focusedElement).not.toBeNull();
+    // aria-label="" means the computed name is empty
+    expect(state.speechResult).not.toBeNull();
+    expect(state.speechResult!.name.trim()).toBe('');
+  });
+
+  test('#generic-div triggers focus-generic-role', async ({ a11y, page }) => {
+    await page.focus('#generic-div');
+    await page.waitForTimeout(50);
+
+    const state = await a11y.getA11yState();
+    expect(state.focusedElement).not.toBeNull();
+    // div with no ARIA role has generic/none/presentation role in AX tree
+    expect(state.speechResult).not.toBeNull();
+    const rawRole = state.speechResult!.rawNode?.role?.value ?? '';
+    expect(['generic', 'none', 'presentation']).toContain(rawRole);
+  });
+
   test('#good-btn passes all checks', async ({ a11y, page }) => {
     await page.focus('#good-btn');
     await page.waitForTimeout(50);
@@ -47,7 +70,7 @@ test.describe('Audit Violations Fixture', () => {
     expect(state.focusedElement!.tabIndex).toBeLessThanOrEqual(0);
   });
 
-  test('OracleAuditor catches issues across Tab traversal', async ({
+  test('OracleAuditor catches all 4 state-based rules', async ({
     a11y,
   }) => {
     const auditor = new OracleAuditor(a11y, {
@@ -61,9 +84,10 @@ test.describe('Audit Violations Fixture', () => {
     }
 
     const issues = auditor.getIssues();
-    // Should detect at least focus-not-visible and positive-tabindex
     const ruleIds = issues.map((i) => i.ruleId);
     expect(ruleIds).toContain('oracle/positive-tabindex');
     expect(ruleIds).toContain('oracle/focus-not-visible');
+    expect(ruleIds).toContain('oracle/focus-missing-name');
+    expect(ruleIds).toContain('oracle/focus-generic-role');
   });
 });

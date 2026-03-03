@@ -54,6 +54,38 @@ describe('Focus Indicator Analysis', () => {
   });
 
   /**
+   * Verify that box-shadow-based focus indicators (no outline) are
+   * correctly detected as visible.
+   *
+   * Reproducing: Some designs use `box-shadow` instead of `outline` for
+   * focus indicators. A11y-Oracle detects both approaches.
+   */
+  it('box-shadow indicator is detected as visible', () => {
+    cy.get('#box-shadow-btn').focus();
+    cy.a11yState().then((state) => {
+      // box-shadow based indicators are also detected as visible
+      expect(state.focusIndicator.isVisible).to.be.true;
+    });
+  });
+
+  /**
+   * Verify that elements with `outline: none` and no replacement
+   * indicator are correctly flagged as not visible (WCAG 2.4.12 failure).
+   *
+   * Reproducing: This is the most common focus indicator bug — CSS resets
+   * that remove outline without providing a replacement. Assert
+   * `isVisible === false` to catch this in your test suite.
+   */
+  it('missing indicator is not visible', () => {
+    cy.get('#no-indicator-btn').focus();
+    cy.a11yState().then((state) => {
+      // No visible focus indicator — WCAG 2.4.12 failure
+      expect(state.focusIndicator.isVisible).to.be.false;
+      expect(state.focusIndicator.meetsWCAG_AA).to.be.false;
+    });
+  });
+
+  /**
    * Verify that focus indicator data is returned for each element as
    * you Tab through the page — useful for auditing an entire page's
    * focus indicators in sequence.
