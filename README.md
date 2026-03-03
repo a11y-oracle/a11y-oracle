@@ -258,7 +258,7 @@ This is an Nx monorepo. Common tasks:
 # Build all libraries
 npx nx run-many --targets=build
 
-# Run all unit tests (250+ tests)
+# Run all unit tests (280+ tests)
 npx nx run-many --targets=test
 
 # Run core engine unit tests (129 tests)
@@ -270,7 +270,7 @@ npx nx test keyboard-engine
 # Run focus analyzer unit tests (56 tests)
 npx nx test focus-analyzer
 
-# Run audit formatter unit tests (49 tests)
+# Run audit formatter unit tests (83 tests)
 npx nx test audit-formatter
 
 # Run Playwright E2E tests (23 tests)

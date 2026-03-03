@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   formatFocusIssues,
   formatTrapIssue,
+  formatNameIssues,
+  formatRoleIssues,
+  formatTabIndexIssues,
   formatAllIssues,
 } from './formatters.js';
 import type { A11yState } from '@a11y-oracle/core-engine';
@@ -240,6 +243,294 @@ describe('formatTrapIssue', () => {
   });
 });
 
+// ---- Helpers for speech-result-based formatters ----
+
+function makeSpeechResult(overrides: Record<string, unknown> = {}) {
+  return {
+    speech: 'Submit, button',
+    name: 'Submit',
+    role: 'button',
+    states: [],
+    rawNode: {
+      nodeId: '1',
+      ignored: false,
+      role: { type: 'role', value: 'button' },
+      name: { type: 'computedString', value: 'Submit' },
+      properties: [],
+      childIds: [],
+    },
+    ...overrides,
+  };
+}
+
+describe('formatNameIssues', () => {
+  it('returns empty array when no element is focused', () => {
+    const state = makeState({ focusedElement: null });
+    expect(formatNameIssues(state, CTX)).toEqual([]);
+  });
+
+  it('returns empty array when no speechResult', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: null,
+    });
+    expect(formatNameIssues(state, CTX)).toEqual([]);
+  });
+
+  it('returns empty array when element has a name', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({ name: 'Submit' }),
+    });
+    expect(formatNameIssues(state, CTX)).toEqual([]);
+  });
+
+  it('returns oracle/focus-missing-name when name is empty', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({
+        name: '',
+        rawNode: {
+          nodeId: '1',
+          ignored: false,
+          role: { type: 'role', value: 'button' },
+          name: { type: 'computedString', value: '' },
+          properties: [],
+          childIds: [],
+        },
+      }),
+    });
+    const issues = formatNameIssues(state, CTX);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].ruleId).toBe('oracle/focus-missing-name');
+    expect(issues[0].impact).toBe('serious');
+    expect(issues[0].resultType).toBe('oracle');
+    expect(issues[0].tags).toContain('wcag412');
+  });
+
+  it('returns oracle/focus-missing-name when name is whitespace only', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({ name: '   ' }),
+    });
+    const issues = formatNameIssues(state, CTX);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].ruleId).toBe('oracle/focus-missing-name');
+  });
+
+  it('skips elements with generic roles (handled by formatRoleIssues)', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({
+        name: '',
+        rawNode: {
+          nodeId: '1',
+          ignored: false,
+          role: { type: 'role', value: 'generic' },
+          name: { type: 'computedString', value: '' },
+          properties: [],
+          childIds: [],
+        },
+      }),
+    });
+    expect(formatNameIssues(state, CTX)).toEqual([]);
+  });
+
+  it('skips elements with presentation role', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({
+        name: '',
+        rawNode: {
+          nodeId: '1',
+          ignored: false,
+          role: { type: 'role', value: 'presentation' },
+          name: { type: 'computedString', value: '' },
+          properties: [],
+          childIds: [],
+        },
+      }),
+    });
+    expect(formatNameIssues(state, CTX)).toEqual([]);
+  });
+
+  it('includes selector and html in issue', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({ name: '' }),
+    });
+    const issues = formatNameIssues(state, CTX);
+    expect(issues[0].selector).toBe('#nav-btn');
+    expect(issues[0].htmlSnippet).toContain('nav-btn');
+  });
+});
+
+describe('formatRoleIssues', () => {
+  it('returns empty array when no element is focused', () => {
+    const state = makeState({ focusedElement: null });
+    expect(formatRoleIssues(state, CTX)).toEqual([]);
+  });
+
+  it('returns empty array when no speechResult', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: null,
+    });
+    expect(formatRoleIssues(state, CTX)).toEqual([]);
+  });
+
+  it('returns empty array when element has a meaningful role', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult(),
+    });
+    expect(formatRoleIssues(state, CTX)).toEqual([]);
+  });
+
+  it('returns oracle/focus-generic-role when role is "generic"', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({
+        rawNode: {
+          nodeId: '1',
+          ignored: false,
+          role: { type: 'role', value: 'generic' },
+          name: { type: 'computedString', value: '' },
+          properties: [],
+          childIds: [],
+        },
+      }),
+    });
+    const issues = formatRoleIssues(state, CTX);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].ruleId).toBe('oracle/focus-generic-role');
+    expect(issues[0].impact).toBe('serious');
+    expect(issues[0].resultType).toBe('oracle');
+    expect(issues[0].tags).toContain('wcag412');
+  });
+
+  it('fires for "none" role', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({
+        rawNode: {
+          nodeId: '1',
+          ignored: false,
+          role: { type: 'role', value: 'none' },
+          name: { type: 'computedString', value: '' },
+          properties: [],
+          childIds: [],
+        },
+      }),
+    });
+    const issues = formatRoleIssues(state, CTX);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].ruleId).toBe('oracle/focus-generic-role');
+  });
+
+  it('fires for "presentation" role', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({
+        rawNode: {
+          nodeId: '1',
+          ignored: false,
+          role: { type: 'role', value: 'presentation' },
+          name: { type: 'computedString', value: '' },
+          properties: [],
+          childIds: [],
+        },
+      }),
+    });
+    const issues = formatRoleIssues(state, CTX);
+    expect(issues).toHaveLength(1);
+  });
+
+  it('does NOT fire for empty-string role (missing data)', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({
+        rawNode: {
+          nodeId: '1',
+          ignored: false,
+          role: { type: 'role', value: '' },
+          name: { type: 'computedString', value: '' },
+          properties: [],
+          childIds: [],
+        },
+      }),
+    });
+    expect(formatRoleIssues(state, CTX)).toEqual([]);
+  });
+
+  it('includes role data in the check', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({
+        rawNode: {
+          nodeId: '1',
+          ignored: false,
+          role: { type: 'role', value: 'generic' },
+          name: { type: 'computedString', value: '' },
+          properties: [],
+          childIds: [],
+        },
+      }),
+    });
+    const issues = formatRoleIssues(state, CTX);
+    expect(issues[0].nodes[0].none[0].data).toEqual({ role: 'generic' });
+  });
+});
+
+describe('formatTabIndexIssues', () => {
+  it('returns empty array when no element is focused', () => {
+    const state = makeState({ focusedElement: null });
+    expect(formatTabIndexIssues(state, CTX)).toEqual([]);
+  });
+
+  it('returns empty array when tabIndex is 0', () => {
+    const state = makeState({
+      focusedElement: { ...FOCUSED_BUTTON, tabIndex: 0 },
+    });
+    expect(formatTabIndexIssues(state, CTX)).toEqual([]);
+  });
+
+  it('returns empty array when tabIndex is -1', () => {
+    const state = makeState({
+      focusedElement: { ...FOCUSED_BUTTON, tabIndex: -1 },
+    });
+    expect(formatTabIndexIssues(state, CTX)).toEqual([]);
+  });
+
+  it('returns oracle/positive-tabindex when tabIndex > 0', () => {
+    const state = makeState({
+      focusedElement: { ...FOCUSED_BUTTON, tabIndex: 5 },
+    });
+    const issues = formatTabIndexIssues(state, CTX);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].ruleId).toBe('oracle/positive-tabindex');
+    expect(issues[0].impact).toBe('serious');
+    expect(issues[0].resultType).toBe('oracle');
+    expect(issues[0].tags).toContain('wcag243');
+  });
+
+  it('includes tabIndex data in the check', () => {
+    const state = makeState({
+      focusedElement: { ...FOCUSED_BUTTON, tabIndex: 10 },
+    });
+    const issues = formatTabIndexIssues(state, CTX);
+    expect(issues[0].nodes[0].none[0].data).toEqual({ tabIndex: 10 });
+  });
+
+  it('fires for tabIndex of 1', () => {
+    const state = makeState({
+      focusedElement: { ...FOCUSED_BUTTON, tabIndex: 1 },
+    });
+    const issues = formatTabIndexIssues(state, CTX);
+    expect(issues).toHaveLength(1);
+  });
+});
+
 describe('formatAllIssues', () => {
   it('returns focus issues from state', () => {
     const state = makeState({
@@ -258,6 +549,7 @@ describe('formatAllIssues', () => {
   it('returns empty array when no issues', () => {
     const state = makeState({
       focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult(),
       focusIndicator: {
         isVisible: true,
         contrastRatio: 5,
@@ -265,5 +557,81 @@ describe('formatAllIssues', () => {
       },
     });
     expect(formatAllIssues(state, CTX)).toEqual([]);
+  });
+
+  it('catches missing name issues', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({ name: '' }),
+      focusIndicator: {
+        isVisible: true,
+        contrastRatio: 5,
+        meetsWCAG_AA: true,
+      },
+    });
+    const issues = formatAllIssues(state, CTX);
+    expect(issues.some((i) => i.ruleId === 'oracle/focus-missing-name')).toBe(
+      true
+    );
+  });
+
+  it('catches generic role issues', () => {
+    const state = makeState({
+      focusedElement: FOCUSED_BUTTON,
+      speechResult: makeSpeechResult({
+        rawNode: {
+          nodeId: '1',
+          ignored: false,
+          role: { type: 'role', value: 'generic' },
+          name: { type: 'computedString', value: '' },
+          properties: [],
+          childIds: [],
+        },
+      }),
+      focusIndicator: {
+        isVisible: true,
+        contrastRatio: 5,
+        meetsWCAG_AA: true,
+      },
+    });
+    const issues = formatAllIssues(state, CTX);
+    expect(
+      issues.some((i) => i.ruleId === 'oracle/focus-generic-role')
+    ).toBe(true);
+  });
+
+  it('catches positive tabindex issues', () => {
+    const state = makeState({
+      focusedElement: { ...FOCUSED_BUTTON, tabIndex: 5 },
+      speechResult: makeSpeechResult(),
+      focusIndicator: {
+        isVisible: true,
+        contrastRatio: 5,
+        meetsWCAG_AA: true,
+      },
+    });
+    const issues = formatAllIssues(state, CTX);
+    expect(
+      issues.some((i) => i.ruleId === 'oracle/positive-tabindex')
+    ).toBe(true);
+  });
+
+  it('can return multiple issues from different rules', () => {
+    const state = makeState({
+      focusedElement: { ...FOCUSED_BUTTON, tabIndex: 3 },
+      speechResult: makeSpeechResult({ name: '' }),
+      focusIndicator: {
+        isVisible: false,
+        contrastRatio: null,
+        meetsWCAG_AA: false,
+      },
+    });
+    const issues = formatAllIssues(state, CTX);
+    // Should catch: focus-not-visible + missing-name + positive-tabindex
+    expect(issues.length).toBeGreaterThanOrEqual(3);
+    const ruleIds = issues.map((i) => i.ruleId);
+    expect(ruleIds).toContain('oracle/focus-not-visible');
+    expect(ruleIds).toContain('oracle/focus-missing-name');
+    expect(ruleIds).toContain('oracle/positive-tabindex');
   });
 });

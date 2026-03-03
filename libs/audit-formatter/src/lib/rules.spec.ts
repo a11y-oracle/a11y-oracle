@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { RULES, RULE_IDS, getRule } from './rules.js';
 
 describe('RULES', () => {
-  it('defines exactly three rules', () => {
-    expect(RULE_IDS).toHaveLength(3);
+  it('defines exactly six rules', () => {
+    expect(RULE_IDS).toHaveLength(6);
   });
 
   it('all ruleIds start with oracle/', () => {
@@ -45,6 +45,18 @@ describe('RULES', () => {
 
   it('keyboard-trap has impact "critical"', () => {
     expect(RULES['oracle/keyboard-trap'].impact).toBe('critical');
+  });
+
+  it('focus-missing-name has impact "serious"', () => {
+    expect(RULES['oracle/focus-missing-name'].impact).toBe('serious');
+  });
+
+  it('focus-generic-role has impact "serious"', () => {
+    expect(RULES['oracle/focus-generic-role'].impact).toBe('serious');
+  });
+
+  it('positive-tabindex has impact "serious"', () => {
+    expect(RULES['oracle/positive-tabindex'].impact).toBe('serious');
   });
 });
 

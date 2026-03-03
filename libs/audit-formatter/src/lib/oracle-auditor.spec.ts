@@ -207,4 +207,77 @@ describe('OracleAuditor', () => {
     expect(auditor.getIssues()[0].project).toBe('my-project');
     expect(auditor.getIssues()[0].specName).toBe('checkout.spec.ts');
   });
+
+  it('detects missing name issues via formatAllIssues', async () => {
+    const missingNameState: A11yState = {
+      speech: ', button',
+      speechResult: {
+        speech: ', button',
+        name: '',
+        role: 'button',
+        states: [],
+        rawNode: {
+          nodeId: '1',
+          ignored: false,
+          role: { type: 'role', value: 'button' },
+          name: { type: 'computedString', value: '' },
+          properties: [],
+          childIds: [],
+        },
+      } as never,
+      focusedElement: {
+        tag: 'BUTTON',
+        id: 'no-name-btn',
+        className: '',
+        textContent: '',
+        role: 'button',
+        ariaLabel: '',
+        tabIndex: 0,
+        rect: { x: 0, y: 0, width: 80, height: 30 },
+      },
+      focusIndicator: {
+        isVisible: true,
+        contrastRatio: 5,
+        meetsWCAG_AA: true,
+      },
+    };
+    const orch = mockOrchestrator([missingNameState]);
+    const auditor = new OracleAuditor(orch, {
+      project: 'app',
+      specName: 'test.ts',
+    });
+    await auditor.pressKey('Tab');
+    expect(auditor.issueCount).toBe(1);
+    expect(auditor.getIssues()[0].ruleId).toBe('oracle/focus-missing-name');
+  });
+
+  it('detects positive tabindex issues via formatAllIssues', async () => {
+    const positiveTabState: A11yState = {
+      speech: 'Submit, button',
+      speechResult: null,
+      focusedElement: {
+        tag: 'BUTTON',
+        id: 'submit',
+        className: '',
+        textContent: 'Submit',
+        role: 'button',
+        ariaLabel: '',
+        tabIndex: 5,
+        rect: { x: 0, y: 0, width: 80, height: 30 },
+      },
+      focusIndicator: {
+        isVisible: true,
+        contrastRatio: 5,
+        meetsWCAG_AA: true,
+      },
+    };
+    const orch = mockOrchestrator([positiveTabState]);
+    const auditor = new OracleAuditor(orch, {
+      project: 'app',
+      specName: 'test.ts',
+    });
+    await auditor.pressKey('Tab');
+    expect(auditor.issueCount).toBe(1);
+    expect(auditor.getIssues()[0].ruleId).toBe('oracle/positive-tabindex');
+  });
 });

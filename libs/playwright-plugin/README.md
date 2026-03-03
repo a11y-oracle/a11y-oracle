@@ -133,7 +133,7 @@ test('all focus indicators pass oracle rules', async ({ page, a11y }) => {
     specName: 'navigation.spec.ts',
   });
 
-  // Each pressKey() automatically checks focus-not-visible + focus-low-contrast
+  // Each pressKey() automatically checks all 5 state-based rules
   await auditor.pressKey('Tab');
   await auditor.pressKey('Tab');
   await auditor.pressKey('Tab');

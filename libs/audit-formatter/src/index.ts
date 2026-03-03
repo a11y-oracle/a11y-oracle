@@ -27,6 +27,9 @@ export { RULES, RULE_IDS, getRule } from './lib/rules.js';
 export {
   formatFocusIssues,
   formatTrapIssue,
+  formatNameIssues,
+  formatRoleIssues,
+  formatTabIndexIssues,
   formatAllIssues,
 } from './lib/formatters.js';
 

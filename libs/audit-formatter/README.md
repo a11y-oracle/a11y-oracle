@@ -54,7 +54,7 @@ test('all focus indicators pass oracle rules', async ({ page, a11y }) => {
     specName: 'navigation.spec.ts',
   });
 
-  // Each pressKey() automatically runs focus checks
+  // Each pressKey() automatically runs all state-based checks
   await auditor.pressKey('Tab');
   await auditor.pressKey('Tab');
   await auditor.pressKey('Tab');
@@ -89,15 +89,18 @@ const snippet = htmlSnippetFromFocusedElement(state.focusedElement);
 
 ## Rules
 
-A11y-Oracle enforces three WCAG rules:
+A11y-Oracle enforces six WCAG rules:
 
 | Rule ID | WCAG Criterion | Level | Impact | Description |
 |---------|---------------|-------|--------|-------------|
 | `oracle/focus-not-visible` | [2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html) | AA | `serious` | Focused element has no visible focus indicator |
 | `oracle/focus-low-contrast` | [2.4.12 Focus Appearance](https://www.w3.org/WAI/WCAG22/Understanding/focus-appearance.html) | AA | `moderate` | Focus indicator contrast ratio is below 3:1 |
 | `oracle/keyboard-trap` | [2.1.2 No Keyboard Trap](https://www.w3.org/WAI/WCAG22/Understanding/no-keyboard-trap.html) | A | `critical` | Keyboard focus is trapped within a container |
+| `oracle/focus-missing-name` | [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html) | A | `serious` | Focused element has no accessible name |
+| `oracle/focus-generic-role` | [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html) | A | `serious` | Focused element has a generic or presentational role |
+| `oracle/positive-tabindex` | [2.4.3 Focus Order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html) | A | `serious` | Element uses a positive tabindex value |
 
-`focus-not-visible` takes priority over `focus-low-contrast` — if no indicator exists, only the visibility rule fires (not both).
+`focus-not-visible` takes priority over `focus-low-contrast` — if no indicator exists, only the visibility rule fires (not both). `focus-generic-role` and `focus-missing-name` are mutually exclusive — generic roles trigger only the role check.
 
 For detailed remediation guidance on each rule, see the [Remediation Guide](../../docs/REMEDIATION.md).
 
@@ -125,9 +128,33 @@ Check a `TraversalResult` for keyboard traps.
   - `context: AuditContext` — `{ project: string, specName: string }`
 - **Returns:** `OracleIssue[]` — 0 or 1 issues
 
+#### `formatNameIssues(state, context)`
+
+Check an `A11yState` for missing accessible name issues.
+
+- **Parameters:** Same as `formatFocusIssues`
+- **Returns:** `OracleIssue[]` — 0 or 1 issues
+- **Behavior:** Returns `oracle/focus-missing-name` if the focused element has no computed name. Skips elements with generic/presentational roles (those fire `formatRoleIssues` instead).
+
+#### `formatRoleIssues(state, context)`
+
+Check an `A11yState` for generic/presentational role issues.
+
+- **Parameters:** Same as `formatFocusIssues`
+- **Returns:** `OracleIssue[]` — 0 or 1 issues
+- **Behavior:** Returns `oracle/focus-generic-role` if the focused element has a `generic`, `none`, or `presentation` role.
+
+#### `formatTabIndexIssues(state, context)`
+
+Check an `A11yState` for positive tabindex issues.
+
+- **Parameters:** Same as `formatFocusIssues`
+- **Returns:** `OracleIssue[]` — 0 or 1 issues
+- **Behavior:** Returns `oracle/positive-tabindex` if the focused element has `tabIndex > 0`.
+
 #### `formatAllIssues(state, context)`
 
-Convenience wrapper that runs all state-based checks (currently just `formatFocusIssues`).
+Convenience wrapper that runs all state-based checks: focus indicator, name, role, and tabindex.
 
 - **Parameters:** Same as `formatFocusIssues`
 - **Returns:** `OracleIssue[]`
@@ -141,11 +168,11 @@ Convenience wrapper that runs all state-based checks (currently just `formatFocu
 
 #### `pressKey(key, modifiers?): Promise<A11yState>`
 
-Dispatch a key press and automatically audit the resulting state for focus issues.
+Dispatch a key press and automatically audit the resulting state for all state-based rules.
 
 #### `getState(): Promise<A11yState>`
 
-Read the current state and audit it for focus issues.
+Read the current state and audit it for all state-based rules.
 
 #### `checkTrap(selector, maxTabs?): Promise<TraversalResult>`
 
@@ -231,7 +258,7 @@ export type { OracleIssue, OracleNode, OracleCheck, OracleImpact, OracleResultTy
 export { RULES, RULE_IDS, getRule };
 
 // Pure formatter functions
-export { formatFocusIssues, formatTrapIssue, formatAllIssues };
+export { formatFocusIssues, formatTrapIssue, formatNameIssues, formatRoleIssues, formatTabIndexIssues, formatAllIssues };
 
 // Selector utilities
 export { selectorFromFocusedElement, selectorFromTabOrderEntry, htmlSnippetFromFocusedElement, htmlSnippetFromTabOrderEntry };

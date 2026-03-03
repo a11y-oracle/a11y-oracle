@@ -166,11 +166,129 @@ export function formatTrapIssue(
   ];
 }
 
+/** Roles that provide no semantic information to assistive technologies. */
+const GENERIC_ROLES = new Set([
+  'generic',
+  'none',
+  'presentation',
+  '',
+]);
+
+/**
+ * Analyze an A11yState for missing accessible name issues.
+ *
+ * Checks:
+ * - `oracle/focus-missing-name` — focused element has no computed name
+ *
+ * Only fires when an element is focused AND has a meaningful role
+ * (elements with generic/none/presentation roles fire
+ * `oracle/focus-generic-role` instead).
+ *
+ * @param state - Unified accessibility state from pressKey() or getState()
+ * @param context - Audit context (project, specName)
+ * @returns Array of 0 or 1 OracleIssue
+ */
+export function formatNameIssues(
+  state: A11yState,
+  context: AuditContext
+): OracleIssue[] {
+  if (!state.focusedElement || !state.speechResult) {
+    return [];
+  }
+
+  // Only check elements with meaningful roles — generic/none handled separately
+  const rawRole = state.speechResult.rawNode?.role?.value ?? '';
+  if (GENERIC_ROLES.has(rawRole)) {
+    return [];
+  }
+
+  // Check if the computed name is empty
+  if (state.speechResult.name && state.speechResult.name.trim() !== '') {
+    return [];
+  }
+
+  return [buildElementIssue('oracle/focus-missing-name', state.focusedElement, null, context)];
+}
+
+/**
+ * Analyze an A11yState for generic/presentational role issues.
+ *
+ * Checks:
+ * - `oracle/focus-generic-role` — focused element has generic, none, or
+ *   presentation role
+ *
+ * Only fires when an element is focused AND the AXNode role is one of the
+ * semantically empty roles. This indicates an element that receives keyboard
+ * focus but provides no role information to assistive technologies.
+ *
+ * @param state - Unified accessibility state from pressKey() or getState()
+ * @param context - Audit context (project, specName)
+ * @returns Array of 0 or 1 OracleIssue
+ */
+export function formatRoleIssues(
+  state: A11yState,
+  context: AuditContext
+): OracleIssue[] {
+  if (!state.focusedElement || !state.speechResult) {
+    return [];
+  }
+
+  const rawRole = state.speechResult.rawNode?.role?.value ?? '';
+  if (!GENERIC_ROLES.has(rawRole) || rawRole === '') {
+    return [];
+  }
+
+  return [
+    buildElementIssue(
+      'oracle/focus-generic-role',
+      state.focusedElement,
+      { role: rawRole },
+      context
+    ),
+  ];
+}
+
+/**
+ * Analyze an A11yState for positive tabindex issues.
+ *
+ * Checks:
+ * - `oracle/positive-tabindex` — focused element has `tabIndex > 0`
+ *
+ * Positive tabindex values create an unpredictable focus order that
+ * diverges from the visual reading order.
+ *
+ * @param state - Unified accessibility state from pressKey() or getState()
+ * @param context - Audit context (project, specName)
+ * @returns Array of 0 or 1 OracleIssue
+ */
+export function formatTabIndexIssues(
+  state: A11yState,
+  context: AuditContext
+): OracleIssue[] {
+  if (!state.focusedElement) {
+    return [];
+  }
+
+  if (state.focusedElement.tabIndex <= 0) {
+    return [];
+  }
+
+  return [
+    buildElementIssue(
+      'oracle/positive-tabindex',
+      state.focusedElement,
+      { tabIndex: state.focusedElement.tabIndex },
+      context
+    ),
+  ];
+}
+
 /**
  * Convenience: analyze an A11yState for ALL state-based rules.
  *
- * Currently runs focus checks only (trap detection requires separate
- * TraversalResult data — use `formatTrapIssue()` for that).
+ * Runs focus indicator checks, name/role checks, and tabindex checks.
+ * Trap detection requires a separate TraversalResult — use
+ * `formatTrapIssue()` for that.
  *
  * @param state - Unified accessibility state
  * @param context - Audit context
@@ -180,10 +298,60 @@ export function formatAllIssues(
   state: A11yState,
   context: AuditContext
 ): OracleIssue[] {
-  return formatFocusIssues(state, context);
+  return [
+    ...formatFocusIssues(state, context),
+    ...formatNameIssues(state, context),
+    ...formatRoleIssues(state, context),
+    ...formatTabIndexIssues(state, context),
+  ];
 }
 
 // ---- Internal helpers ----
+
+function buildElementIssue(
+  ruleId: string,
+  el: A11yFocusedElement,
+  data: unknown,
+  context: AuditContext
+): OracleIssue {
+  const rule = RULES[ruleId];
+  const selector = selectorFromFocusedElement(el);
+  const html = htmlSnippetFromFocusedElement(el);
+
+  const node: OracleNode = {
+    impact: rule.impact,
+    html,
+    target: [selector],
+    any: [],
+    all: [],
+    none: [
+      {
+        id: ruleId,
+        data,
+        relatedNodes: [],
+        impact: rule.impact,
+        message: rule.help,
+      },
+    ],
+    failureSummary: rule.failureSummary,
+  };
+
+  return {
+    ruleId,
+    impact: rule.impact,
+    description: rule.description,
+    help: rule.help,
+    failureSummary: rule.failureSummary,
+    htmlSnippet: html,
+    selector,
+    specName: context.specName,
+    project: context.project,
+    helpUrl: rule.helpUrl,
+    tags: [...rule.tags],
+    nodes: [node],
+    resultType: 'oracle',
+  };
+}
 
 function buildFocusIssue(
   ruleId: string,

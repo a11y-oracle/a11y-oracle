@@ -13,9 +13,15 @@ import type { OracleRule } from './types.js';
 /**
  * All defined Oracle audit rules.
  *
+ * Focus indicator rules:
  * - `oracle/focus-not-visible` — WCAG 2.4.7 Focus Visible (Level AA)
  * - `oracle/focus-low-contrast` — WCAG 2.4.12 Focus Appearance (Level AA, WCAG 2.2)
+ *
+ * Keyboard navigation rules:
  * - `oracle/keyboard-trap` — WCAG 2.1.2 No Keyboard Trap (Level A)
+ * - `oracle/focus-missing-name` — WCAG 4.1.2 Name, Role, Value (Level A)
+ * - `oracle/focus-generic-role` — WCAG 4.1.2 Name, Role, Value (Level A)
+ * - `oracle/positive-tabindex` — WCAG 2.4.3 Focus Order (Level A)
  */
 export const RULES: Record<string, OracleRule> = {
   'oracle/focus-not-visible': {
@@ -64,6 +70,55 @@ export const RULES: Record<string, OracleRule> = {
     failureSummary:
       'Fix any of the following:\n' +
       '  Keyboard focus is trapped within the container and cannot escape.',
+  },
+
+  'oracle/focus-missing-name': {
+    ruleId: 'oracle/focus-missing-name',
+    help: 'Focused element must have an accessible name',
+    description:
+      'Ensures that interactive elements have a non-empty computed accessible ' +
+      'name when focused via the keyboard. Without an accessible name, screen ' +
+      'readers cannot identify the element to users.',
+    impact: 'serious',
+    tags: ['wcag2a', 'wcag412', 'cat.keyboard', 'oracle'],
+    helpUrl:
+      'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    failureSummary:
+      'Fix any of the following:\n' +
+      '  Focused element has no accessible name (aria-label, aria-labelledby, or text content).',
+  },
+
+  'oracle/focus-generic-role': {
+    ruleId: 'oracle/focus-generic-role',
+    help: 'Focused element must have a meaningful role',
+    description:
+      'Ensures that interactive elements exposed to the keyboard have a ' +
+      'meaningful ARIA role. Elements with generic, presentation, or none ' +
+      'roles provide no semantic information to assistive technologies.',
+    impact: 'serious',
+    tags: ['wcag2a', 'wcag412', 'cat.keyboard', 'oracle'],
+    helpUrl:
+      'https://www.w3.org/WAI/WCAG22/Understanding/name-role-value.html',
+    failureSummary:
+      'Fix any of the following:\n' +
+      '  Focused element has a generic or presentational role instead of a semantic role.',
+  },
+
+  'oracle/positive-tabindex': {
+    ruleId: 'oracle/positive-tabindex',
+    help: 'Elements should not use positive tabindex values',
+    description:
+      'Ensures that elements in the tab order do not use tabindex values ' +
+      'greater than 0. Positive tabindex creates an unpredictable focus ' +
+      'order that diverges from the visual reading order, making keyboard ' +
+      'navigation confusing for users.',
+    impact: 'serious',
+    tags: ['wcag2a', 'wcag243', 'cat.keyboard', 'oracle'],
+    helpUrl:
+      'https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html',
+    failureSummary:
+      'Fix any of the following:\n' +
+      '  Element uses a positive tabindex value, disrupting the natural focus order.',
   },
 };
 

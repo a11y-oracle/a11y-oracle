@@ -21,7 +21,7 @@
 import type { A11yState } from '@a11y-oracle/core-engine';
 import type { TraversalResult } from '@a11y-oracle/focus-analyzer';
 import type { OracleIssue, AuditContext } from './types.js';
-import { formatFocusIssues, formatTrapIssue } from './formatters.js';
+import { formatAllIssues, formatTrapIssue } from './formatters.js';
 
 /**
  * Minimal interface satisfied by A11yOrchestrator and A11yOracle.
@@ -68,7 +68,7 @@ export class OracleAuditor {
     modifiers?: Record<string, boolean>
   ): Promise<A11yState> {
     const state = await this.orchestrator.pressKey(key, modifiers);
-    this.issues.push(...formatFocusIssues(state, this.context));
+    this.issues.push(...formatAllIssues(state, this.context));
     return state;
   }
 
@@ -78,7 +78,7 @@ export class OracleAuditor {
    */
   async getState(): Promise<A11yState> {
     const state = await this.orchestrator.getState();
-    this.issues.push(...formatFocusIssues(state, this.context));
+    this.issues.push(...formatAllIssues(state, this.context));
     return state;
   }
 

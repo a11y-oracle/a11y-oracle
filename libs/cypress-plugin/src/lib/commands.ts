@@ -42,7 +42,7 @@ import type {
 } from '@a11y-oracle/core-engine';
 import { KEY_DEFINITIONS } from '@a11y-oracle/keyboard-engine';
 import {
-  formatFocusIssues,
+  formatAllIssues,
   formatTrapIssue,
 } from '@a11y-oracle/audit-formatter';
 import type { AuditContext } from '@a11y-oracle/audit-formatter';
@@ -490,7 +490,7 @@ Cypress.Commands.add(
       }
       const ctx = resolveAuditContext(context);
       const state = await orchestrator.getState();
-      const issues = formatFocusIssues(state, ctx);
+      const issues = formatAllIssues(state, ctx);
 
       if (issues.length > 0) {
         cy.task(

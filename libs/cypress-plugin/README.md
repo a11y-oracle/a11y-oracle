@@ -364,7 +364,7 @@ cy.a11yTraverseSubTree('#modal', 20).then((result) => {
 
 #### `cy.a11yCheckFocusAndReport(context?)`
 
-Check the current focused element's focus indicator and report any issues via `cy.task('logOracleIssues')`. Checks both `oracle/focus-not-visible` and `oracle/focus-low-contrast` rules.
+Check the current focused element and report any issues via `cy.task('logOracleIssues')`. Runs all state-based rules: `oracle/focus-not-visible`, `oracle/focus-low-contrast`, `oracle/focus-missing-name`, `oracle/focus-generic-role`, and `oracle/positive-tabindex`.
 
 - `context` — Optional `Partial<AuditContext>`. Defaults to `{ project: Cypress.env('projectName'), specName: Cypress.spec.name }`.
 
