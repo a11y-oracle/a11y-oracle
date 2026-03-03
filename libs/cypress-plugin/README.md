@@ -1,6 +1,6 @@
 # @a11y-oracle/cypress-plugin
 
-Cypress integration for A11y-Oracle. Provides custom commands that read the browser's Accessibility Tree via Chrome DevTools Protocol and return standardized speech output.
+Cypress integration for A11y-Oracle. Provides custom commands that read the browser's Accessibility Tree via Chrome DevTools Protocol, dispatch native keyboard events, and analyze visual focus indicators.
 
 ```typescript
 describe('Navigation', () => {
@@ -67,7 +67,7 @@ npx cypress run --browser chrome
 
 ## Usage
 
-### Basic Test Pattern
+### Speech Assertions
 
 ```typescript
 describe('My Form', () => {
@@ -96,6 +96,52 @@ describe('My Form', () => {
 });
 ```
 
+### Unified State (Speech + Focus + Indicator)
+
+```typescript
+it('Tab returns unified accessibility state', () => {
+  cy.a11yPressKey('Tab').then((state) => {
+    // Speech
+    expect(state.speech).to.contain('Submit');
+    expect(state.speechResult?.role).to.equal('button');
+
+    // Focused element
+    expect(state.focusedElement?.tag).to.equal('BUTTON');
+    expect(state.focusedElement?.id).to.equal('submit-btn');
+
+    // Focus indicator (WCAG 2.4.12 AA)
+    expect(state.focusIndicator.isVisible).to.be.true;
+    expect(state.focusIndicator.meetsWCAG_AA).to.be.true;
+  });
+});
+
+it('Shift+Tab navigates backward', () => {
+  cy.a11yPressKey('Tab');
+  cy.a11yPressKey('Tab');
+  cy.a11yPressKey('Tab', { shift: true }).then((state) => {
+    expect(state.focusedElement).to.not.be.null;
+  });
+});
+```
+
+### Tab Order and Keyboard Trap Detection
+
+```typescript
+it('page has correct tab order', () => {
+  cy.a11yTraverseTabOrder().then((report) => {
+    expect(report.totalCount).to.be.greaterThan(0);
+    expect(report.entries[0].tag).to.equal('A');
+  });
+});
+
+it('modal does not trap keyboard focus', () => {
+  cy.a11yTraverseSubTree('#modal-container', 20).then((result) => {
+    expect(result.isTrapped).to.be.false;
+    expect(result.escapeElement).to.not.be.null;
+  });
+});
+```
+
 ### Asserting on Landmarks and Structure
 
 Use `getA11yFullTreeSpeech()` to inspect elements that don't have focus:
@@ -106,13 +152,6 @@ it('navigation landmark exists', () => {
     const nav = tree.find(r => r.speech.includes('navigation landmark'));
     expect(nav).to.exist;
     expect(nav.speech).to.contain('Main');
-  });
-});
-
-it('page has correct heading structure', () => {
-  cy.getA11yFullTreeSpeech().then((tree) => {
-    const headings = tree.filter(r => r.role.includes('heading'));
-    expect(headings.length).to.be.greaterThan(0);
   });
 });
 ```
@@ -136,7 +175,7 @@ it('returns structured data', () => {
 
 ### Configuration Options
 
-Pass options to `initA11yOracle()` to customize the speech engine:
+Pass options to `initA11yOracle()` to customize behavior:
 
 ```typescript
 // Include descriptions from aria-describedby
@@ -144,22 +183,26 @@ cy.initA11yOracle({ includeDescription: true });
 
 // Disable "landmark" suffix on landmark roles
 cy.initA11yOracle({ includeLandmarks: false });
+
+// Adjust focus settle delay for slow CSS transitions
+cy.initA11yOracle({ focusSettleMs: 100 });
 ```
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `includeLandmarks` | `boolean` | `true` | Append "landmark" to landmark roles |
 | `includeDescription` | `boolean` | `false` | Include `aria-describedby` text in output |
+| `focusSettleMs` | `number` | `50` | Delay (ms) after key press for focus/CSS to settle |
 
 ## API Reference
 
-### Commands
+### Speech Commands
 
 #### `cy.initA11yOracle(options?)`
 
 Initialize the plugin. Must be called after `cy.visit()` and before other A11y-Oracle commands. Typically called in `beforeEach()`.
 
-Enables CDP domains, discovers the AUT iframe, and creates the speech engine.
+Enables CDP domains, discovers the AUT iframe, creates the speech engine and orchestrator.
 
 #### `cy.a11yPress(key)`
 
@@ -177,32 +220,64 @@ Supported keys: `Tab`, `Enter`, `Space`, `Escape`, `ArrowUp`, `ArrowDown`, `Arro
 
 Get the speech string for the currently focused element without pressing a key. Yields a string.
 
-```typescript
-cy.getA11ySpeech().should('contain', 'button');
-```
-
 #### `cy.getA11ySpeechResult()`
 
-Get the full structured result for the focused element. Yields a `SpeechResult | null`.
-
-```typescript
-cy.getA11ySpeechResult().then((result) => {
-  expect(result.name).to.equal('Submit');
-  expect(result.role).to.equal('button');
-  expect(result.states).to.deep.equal([]);
-});
-```
+Get the full structured result for the focused element. Yields `SpeechResult | null`.
 
 #### `cy.getA11yFullTreeSpeech()`
 
 Get speech for all non-ignored nodes in the accessibility tree. Yields `SpeechResult[]`.
 
+### Unified State Commands
+
+#### `cy.a11yPressKey(key, modifiers?)`
+
+Press a key via native CDP dispatch and return the unified accessibility state. Yields `A11yState`.
+
 ```typescript
-cy.getA11yFullTreeSpeech().then((tree) => {
-  const landmarks = tree.filter(r => r.role.includes('landmark'));
-  expect(landmarks.length).to.be.greaterThan(0);
+cy.a11yPressKey('Tab').then((state) => {
+  expect(state.speech).to.contain('button');
+  expect(state.focusIndicator.meetsWCAG_AA).to.be.true;
+});
+
+// With modifier keys
+cy.a11yPressKey('Tab', { shift: true }).then((state) => {
+  expect(state.focusedElement).to.not.be.null;
 });
 ```
+
+#### `cy.a11yState()`
+
+Get the current unified accessibility state without pressing a key. Yields `A11yState`.
+
+```typescript
+cy.get('#my-button').focus();
+cy.a11yState().then((state) => {
+  expect(state.speech).to.contain('Submit');
+});
+```
+
+#### `cy.a11yTraverseTabOrder()`
+
+Extract all tabbable elements in DOM tab order. Yields `TabOrderReport`.
+
+```typescript
+cy.a11yTraverseTabOrder().then((report) => {
+  expect(report.totalCount).to.be.greaterThan(0);
+});
+```
+
+#### `cy.a11yTraverseSubTree(selector, maxTabs?)`
+
+Detect whether a container traps keyboard focus (WCAG 2.1.2). Yields `TraversalResult`.
+
+```typescript
+cy.a11yTraverseSubTree('#modal', 20).then((result) => {
+  expect(result.isTrapped).to.be.false;
+});
+```
+
+### Lifecycle
 
 #### `cy.disposeA11yOracle()`
 
@@ -210,16 +285,21 @@ Dispose the plugin and release CDP resources. Typically called in `afterEach()`.
 
 ### Types
 
-The `SpeechResult` type is re-exported from `@a11y-oracle/core-engine`:
+All types are re-exported from `@a11y-oracle/core-engine`:
 
 ```typescript
-interface SpeechResult {
-  speech: string;              // "Products, button, collapsed"
-  name: string;                // "Products"
-  role: string;                // "button"
-  states: string[];            // ["collapsed"]
-  rawNode: Protocol.Accessibility.AXNode;
-}
+import type {
+  SpeechResult,
+  A11yState,
+  A11yFocusedElement,
+  A11yFocusIndicator,
+  A11yOrchestratorOptions,
+  ModifierKeys,
+  TabOrderReport,
+  TabOrderEntry,
+  TraversalResult,
+  FocusIndicator,
+} from '@a11y-oracle/cypress-plugin';
 ```
 
 ## How It Works
@@ -228,25 +308,29 @@ The Cypress plugin uses a browser-side CDP approach through `Cypress.automation(
 
 ### Cypress Iframe Architecture
 
-Cypress runs the app under test (AUT) inside an iframe within its runner page. This creates a challenge: CDP commands target the runner page by default, not the AUT. The plugin handles this by:
+Cypress runs the app under test (AUT) inside an iframe within its runner page. This creates a challenge: CDP commands target the runner page by default, not the AUT. The plugin handles this transparently:
 
-1. **Frame discovery** -- On `initA11yOracle()`, the plugin calls `Page.getFrameTree()` to enumerate all frames. It identifies the AUT frame by filtering out Cypress internal frames (`/__/`, `__cypress`, `about:blank`).
+1. **Frame discovery** — On `initA11yOracle()`, the plugin calls `Page.getFrameTree()` to enumerate all frames. It identifies the AUT frame by filtering out Cypress internal frames (`/__/`, `__cypress`, `about:blank`).
 
-2. **Frame-scoped accessibility queries** -- A CDP adapter injects the AUT `frameId` into every `Accessibility.getFullAXTree()` call, ensuring the accessibility tree is scoped to the app, not the runner UI.
+2. **Frame-scoped accessibility queries** — A CDP adapter injects the AUT `frameId` into every `Accessibility.getFullAXTree()` call, ensuring the accessibility tree is scoped to the app, not the runner UI.
 
-3. **Focus management** -- Before each keyboard event, the plugin uses `DOM.focus()` on the AUT iframe element so that `Input.dispatchKeyEvent` reaches the correct frame.
+3. **Isolated execution context** — For `Runtime.evaluate` calls (focus indicator analysis, tab order, trap detection), the plugin creates an isolated world in the AUT frame via `Page.createIsolatedWorld`. This isolated world shares the same DOM (including `document.activeElement`, computed styles, etc.) but has its own JavaScript scope, ensuring evaluations target the AUT content.
+
+4. **Focus management** — Before each keyboard event, the plugin uses `DOM.focus()` on the AUT iframe element so that `Input.dispatchKeyEvent` reaches the correct frame.
 
 ### CDP Flow
 
 ```
-cy.a11yPress('Tab')
+cy.a11yPressKey('Tab')
   │
   ├─ DOM.focus() on AUT iframe
   ├─ Input.dispatchKeyEvent (keyDown + keyUp)
   ├─ 50ms delay for focus/ARIA state updates
   ├─ Accessibility.getFullAXTree({ frameId: autFrameId })
-  ├─ Find focused node in AXTree
-  └─ Map role + name + states → speech string
+  ├─ Runtime.evaluate({ contextId: autContextId }) — focused element
+  ├─ Runtime.evaluate({ contextId: autContextId }) — focus indicator CSS
+  ├─ Find focused node in AXTree → speech string
+  └─ Assemble A11yState { speech, focusedElement, focusIndicator }
 ```
 
 ## TypeScript
@@ -290,5 +374,13 @@ If assertions match Cypress runner elements (like "Stop, button" or "Options, bu
 - The key press moved focus outside the page (e.g., Tab past the last element)
 - The focused element has `role="presentation"` or `role="none"`
 - The focused element is the `RootWebArea` (document body)
+
+### Focus indicator shows `contrastRatio: null`
+
+This happens when the focus indicator color cannot be reliably parsed. Common causes:
+
+- Complex CSS color functions (`color-mix()`, `hsl()`, named colors)
+- Multi-layer gradients as focus indicators
+- `currentColor` as outline color
 
 For the full list of role and state mappings, see the [@a11y-oracle/core-engine README](../core-engine/README.md).

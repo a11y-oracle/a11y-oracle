@@ -1,10 +1,9 @@
 # @a11y-oracle/core-engine
 
-Framework-agnostic speech engine for A11y-Oracle. Connects to the browser's Accessibility Tree via the Chrome DevTools Protocol and generates standardized speech output following the format:
+Framework-agnostic accessibility engine for A11y-Oracle. Provides two main APIs:
 
-```
-[Computed Name], [Role], [State/Properties]
-```
+1. **`SpeechEngine`** — Reads the browser's Accessibility Tree via CDP and generates standardized speech output.
+2. **`A11yOrchestrator`** — Unified orchestrator that combines speech, keyboard dispatch, and focus indicator analysis into a single `pressKey()` call.
 
 This package is the foundation that the Playwright and Cypress plugins build on. You can also use it directly with any CDP-compatible client.
 
@@ -16,7 +15,9 @@ npm install @a11y-oracle/core-engine
 
 ## Usage
 
-The engine operates through a `CDPSessionLike` interface, which any CDP client can satisfy:
+### SpeechEngine (Speech Only)
+
+The speech engine operates through a `CDPSessionLike` interface, which any CDP client can satisfy:
 
 ```typescript
 import { SpeechEngine } from '@a11y-oracle/core-engine';
@@ -38,6 +39,37 @@ const nav = all.find(r => r.speech.includes('navigation landmark'));
 await engine.disable();
 ```
 
+### A11yOrchestrator (Unified State)
+
+The orchestrator coordinates the speech engine, keyboard engine, and focus analyzer:
+
+```typescript
+import { A11yOrchestrator } from '@a11y-oracle/core-engine';
+
+const cdpSession = await page.context().newCDPSession(page);
+const orchestrator = new A11yOrchestrator(cdpSession);
+await orchestrator.enable();
+
+// Press a key and get unified state
+const state = await orchestrator.pressKey('Tab');
+console.log(state.speech);                       // "Products, button, collapsed"
+console.log(state.focusedElement?.tag);           // "BUTTON"
+console.log(state.focusIndicator.meetsWCAG_AA);  // true
+
+// Get state without pressing a key
+const current = await orchestrator.getState();
+
+// Tab order extraction
+const report = await orchestrator.traverseTabOrder();
+console.log(report.totalCount);  // 12
+
+// Keyboard trap detection (WCAG 2.1.2)
+const result = await orchestrator.traverseSubTree('#modal', 20);
+console.log(result.isTrapped);  // false
+
+await orchestrator.disable();
+```
+
 ### Configuration Options
 
 ```typescript
@@ -52,21 +84,28 @@ const engine = new SpeechEngine(cdpSession, {
   // false: "Submit, button"
   includeDescription: false,
 });
+
+const orchestrator = new A11yOrchestrator(cdpSession, {
+  // All SpeechEngine options, plus:
+
+  // Milliseconds to wait after key press for focus/CSS to settle (default: 50)
+  focusSettleMs: 50,
+});
 ```
 
 ## API Reference
 
 ### `SpeechEngine`
 
-The central class. All methods are async and operate through the CDP session.
+The speech engine. All methods are async and operate through the CDP session.
 
 #### `constructor(cdp: CDPSessionLike, options?: SpeechEngineOptions)`
 
 Create a new engine instance.
 
-- `cdp` -- Any object implementing the `CDPSessionLike` interface.
-- `options.includeLandmarks` -- Append "landmark" to landmark roles. Default `true`.
-- `options.includeDescription` -- Include `aria-describedby` text. Default `false`.
+- `cdp` — Any object implementing the `CDPSessionLike` interface.
+- `options.includeLandmarks` — Append "landmark" to landmark roles. Default `true`.
+- `options.includeDescription` — Include `aria-describedby` text. Default `false`.
 
 #### `enable(): Promise<void>`
 
@@ -111,9 +150,92 @@ Compute speech for a single AXNode. Returns `null` for ignored or silent nodes.
 
 Find the most specific focused node in the flat AXTree array. When multiple nodes report `focused: true` (e.g., `RootWebArea` and a `menuitem`), the deepest node is returned.
 
-### `CDPSessionLike`
+### `A11yOrchestrator`
 
-The abstraction boundary between the engine and test frameworks. Any object with a compatible `send` method works:
+Unified orchestrator coordinating three sub-engines:
+
+| Engine | Responsibility |
+|--------|---------------|
+| `SpeechEngine` | AXTree to speech string |
+| `KeyboardEngine` | CDP key dispatch + `document.activeElement` |
+| `FocusAnalyzer` | CSS focus indicator + tab order + trap detection |
+
+#### `constructor(cdp: CDPSessionLike, options?: A11yOrchestratorOptions)`
+
+Create a new orchestrator.
+
+- `cdp` — Any CDP-compatible session.
+- `options.includeLandmarks` — Append "landmark" to landmark roles. Default `true`.
+- `options.includeDescription` — Include description text. Default `false`.
+- `options.focusSettleMs` — Delay after key press for focus/CSS to settle. Default `50`.
+
+#### `enable(): Promise<void>`
+
+Enable the CDP Accessibility domain. Must be called before other methods.
+
+#### `disable(): Promise<void>`
+
+Disable the CDP Accessibility domain.
+
+#### `pressKey(key: string, modifiers?: ModifierKeys): Promise<A11yState>`
+
+Dispatch a key press and return the unified accessibility state.
+
+1. Sends `keyDown` + `keyUp` via CDP `Input.dispatchKeyEvent`
+2. Waits `focusSettleMs` for CSS transitions and focus events
+3. Collects speech, focused element, and focus indicator in parallel
+
+```typescript
+const state = await orchestrator.pressKey('Tab');
+// state.speech           → "Products, button, collapsed"
+// state.focusedElement   → { tag: 'BUTTON', id: 'products-btn', ... }
+// state.focusIndicator   → { isVisible: true, contrastRatio: 12.5, meetsWCAG_AA: true }
+
+// With modifier keys
+const prev = await orchestrator.pressKey('Tab', { shift: true });
+```
+
+#### `getState(): Promise<A11yState>`
+
+Get the current unified state without pressing a key. Useful after programmatic focus changes.
+
+```typescript
+await page.focus('#my-button');
+const state = await orchestrator.getState();
+```
+
+#### `traverseTabOrder(): Promise<TabOrderReport>`
+
+Extract all tabbable elements in DOM tab order.
+
+```typescript
+const report = await orchestrator.traverseTabOrder();
+console.log(report.totalCount);     // 12
+console.log(report.entries[0].tag); // "A"
+console.log(report.entries[0].id);  // "home-link"
+```
+
+#### `traverseSubTree(selector: string, maxTabs?: number): Promise<TraversalResult>`
+
+Detect whether a container traps keyboard focus (WCAG 2.1.2).
+
+Focuses the first tabbable element in the container, presses Tab up to `maxTabs` times (default 50), and checks whether focus ever escapes.
+
+```typescript
+const result = await orchestrator.traverseSubTree('#modal-container', 20);
+if (result.isTrapped) {
+  console.log('Keyboard trap detected!');
+  console.log(`Focus visited ${result.visitedElements.length} elements`);
+} else {
+  console.log(`Focus escaped to: ${result.escapeElement?.tag}`);
+}
+```
+
+### Types
+
+#### `CDPSessionLike`
+
+The abstraction boundary between the engine and test frameworks:
 
 ```typescript
 interface CDPSessionLike {
@@ -129,7 +251,7 @@ interface CDPSessionLike {
 
 Both Playwright's `CDPSession` and `chrome-remote-interface` clients satisfy this interface without adapters.
 
-### `SpeechResult`
+#### `SpeechResult`
 
 Returned by `getSpeech()` and `getFullTreeSpeech()`:
 
@@ -140,6 +262,89 @@ interface SpeechResult {
   role: string;                // "button"
   states: string[];            // ["collapsed"]
   rawNode: Protocol.Accessibility.AXNode;
+}
+```
+
+#### `A11yState`
+
+Returned by `pressKey()` and `getState()`:
+
+```typescript
+interface A11yState {
+  speech: string;                          // "Products, button, collapsed"
+  speechResult: SpeechResult | null;       // Full speech result with raw AXNode
+  focusedElement: A11yFocusedElement | null; // DOM info
+  focusIndicator: A11yFocusIndicator;      // CSS analysis
+}
+```
+
+#### `A11yFocusedElement`
+
+```typescript
+interface A11yFocusedElement {
+  tag: string;        // "BUTTON"
+  id: string;         // "submit-btn"
+  className: string;  // "btn primary"
+  textContent: string; // "Submit"
+  role: string;       // "button"
+  ariaLabel: string;  // "Submit form"
+  tabIndex: number;   // 0
+  rect: { x: number; y: number; width: number; height: number };
+}
+```
+
+#### `A11yFocusIndicator`
+
+```typescript
+interface A11yFocusIndicator {
+  isVisible: boolean;           // true if outline or box-shadow detected
+  contrastRatio: number | null; // null if colors unparseable
+  meetsWCAG_AA: boolean;        // true if visible and contrast >= 3.0
+}
+```
+
+#### `ModifierKeys`
+
+```typescript
+interface ModifierKeys {
+  shift?: boolean;
+  ctrl?: boolean;
+  alt?: boolean;
+  meta?: boolean;
+}
+```
+
+#### `TabOrderReport`
+
+```typescript
+interface TabOrderReport {
+  entries: TabOrderEntry[];
+  totalCount: number;
+}
+```
+
+#### `TabOrderEntry`
+
+```typescript
+interface TabOrderEntry {
+  index: number;     // Position in tab order (0-based)
+  tag: string;       // "BUTTON"
+  id: string;        // "submit-btn"
+  textContent: string;
+  tabIndex: number;
+  role: string;
+  rect: { x: number; y: number; width: number; height: number };
+}
+```
+
+#### `TraversalResult`
+
+```typescript
+interface TraversalResult {
+  isTrapped: boolean;                  // true if focus never escaped
+  tabCount: number;                    // Total Tab presses attempted
+  visitedElements: TabOrderEntry[];    // Elements that received focus
+  escapeElement: TabOrderEntry | null; // First element outside container
 }
 ```
 
@@ -241,14 +446,28 @@ When multiple states are present, they are joined in the fixed order above:
 ## Exports
 
 ```typescript
-// Main class
-export { SpeechEngine } from './lib/speech-engine';
+// Main classes
+export { SpeechEngine } from '@a11y-oracle/core-engine';
+export { A11yOrchestrator } from '@a11y-oracle/core-engine';
 
-// Types
-export type { CDPSessionLike, SpeechResult, SpeechEngineOptions } from './lib/types';
-export type { StateMapping, AXNodeProperty } from './lib/state-map';
+// Core types
+export type {
+  CDPSessionLike,
+  SpeechResult,
+  SpeechEngineOptions,
+  A11yState,
+  A11yFocusedElement,
+  A11yFocusIndicator,
+  A11yOrchestratorOptions,
+} from '@a11y-oracle/core-engine';
 
 // Data (for advanced customization)
-export { ROLE_TO_SPEECH, LANDMARK_ROLES } from './lib/role-map';
-export { STATE_MAPPINGS, extractStates } from './lib/state-map';
+export { ROLE_TO_SPEECH, LANDMARK_ROLES } from '@a11y-oracle/core-engine';
+export { STATE_MAPPINGS, extractStates } from '@a11y-oracle/core-engine';
+export type { StateMapping, AXNodeProperty } from '@a11y-oracle/core-engine';
+
+// Re-exports from sub-engines
+export type { ModifierKeys, FocusedElementInfo, KeyDefinition } from '@a11y-oracle/core-engine';
+export { KEY_DEFINITIONS } from '@a11y-oracle/core-engine';
+export type { FocusIndicator, TabOrderEntry, TabOrderReport, TraversalResult } from '@a11y-oracle/core-engine';
 ```

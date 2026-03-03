@@ -1,6 +1,6 @@
 # A11y-Oracle
 
-A Node.js testing utility that intercepts the browser's Accessibility Tree via the Chrome DevTools Protocol (CDP) and generates standardized speech output. Assert that your UI communicates the correct Name, Role, and State to assistive technologies.
+A Node.js testing utility that intercepts the browser's Accessibility Tree via the Chrome DevTools Protocol (CDP) and generates standardized speech output, keyboard navigation analysis, and focus indicator validation. Assert that your UI communicates the correct Name, Role, and State to assistive technologies — and that it's fully keyboard accessible.
 
 ## Why A11y-Oracle?
 
@@ -21,14 +21,18 @@ A11y-Oracle takes a different approach: it reads the browser's own accessibility
 | `<a href="/home">Home</a>` | `Home, link` |
 | `<input type="checkbox" checked aria-label="Agree">` | `Agree, checkbox, checked` |
 
+Beyond speech, A11y-Oracle also provides **unified accessibility state** that combines speech output with keyboard navigation data and visual focus indicator analysis — letting you verify WCAG keyboard accessibility requirements in a single assertion.
+
 ## Architecture
 
-A11y-Oracle is structured as an Nx monorepo with three publishable packages:
+A11y-Oracle is structured as an Nx monorepo with five publishable packages:
 
 ```
 a11y-oracle/
   libs/
     core-engine/          @a11y-oracle/core-engine
+    keyboard-engine/      @a11y-oracle/keyboard-engine
+    focus-analyzer/       @a11y-oracle/focus-analyzer
     playwright-plugin/    @a11y-oracle/playwright-plugin
     cypress-plugin/       @a11y-oracle/cypress-plugin
   apps/
@@ -37,9 +41,21 @@ a11y-oracle/
     cypress-e2e/          Cypress E2E tests
 ```
 
-- **`@a11y-oracle/core-engine`** is the framework-agnostic speech engine. It depends only on a `CDPSessionLike` interface, not on any test framework.
-- **`@a11y-oracle/playwright-plugin`** wraps the core engine with Playwright-specific lifecycle management and provides a test fixture.
-- **`@a11y-oracle/cypress-plugin`** wraps the core engine with Cypress custom commands, handling Cypress's iframe architecture transparently.
+### Dependency Graph
+
+```
+keyboard-engine        (standalone — CDP key dispatch + focused element)
+focus-analyzer    ──→  keyboard-engine
+core-engine       ──→  keyboard-engine + focus-analyzer
+playwright-plugin ──→  core-engine
+cypress-plugin    ──→  core-engine + keyboard-engine
+```
+
+- **`@a11y-oracle/core-engine`** — Framework-agnostic speech engine and unified `A11yOrchestrator`. Depends only on a `CDPSessionLike` interface.
+- **`@a11y-oracle/keyboard-engine`** — Native CDP keyboard dispatch with modifier key support and focused element introspection.
+- **`@a11y-oracle/focus-analyzer`** — Focus indicator CSS analysis (WCAG 2.4.12), tab order extraction, and keyboard trap detection (WCAG 2.1.2).
+- **`@a11y-oracle/playwright-plugin`** — Playwright test fixture wrapping the core engine.
+- **`@a11y-oracle/cypress-plugin`** — Cypress custom commands with iframe-aware CDP routing.
 
 ## Quick Start
 
@@ -48,6 +64,8 @@ a11y-oracle/
 ```bash
 npm install @a11y-oracle/playwright-plugin
 ```
+
+#### Speech Assertions
 
 ```typescript
 import { test, expect } from '@a11y-oracle/playwright-plugin';
@@ -67,11 +85,40 @@ test('dropdown menu keyboard navigation', async ({ page, a11y }) => {
   // Open the submenu
   const clothing = await a11y.press('Enter');
   expect(clothing).toContain('Clothing');
+});
+```
 
-  // Verify landmarks exist in the page
-  const tree = await a11y.getFullTreeSpeech();
-  const nav = tree.find(r => r.speech.includes('navigation landmark'));
-  expect(nav).toBeDefined();
+#### Unified State (Speech + Focus + Indicator)
+
+```typescript
+import { test, expect } from '@a11y-oracle/playwright-plugin';
+
+test('Tab produces unified accessibility state', async ({ page, a11y }) => {
+  await page.goto('/my-page.html');
+
+  const state = await a11y.pressKey('Tab');
+
+  // Speech
+  expect(state.speech).toContain('Submit');
+
+  // Focused element info
+  expect(state.focusedElement?.tag).toBe('BUTTON');
+  expect(state.focusedElement?.id).toBe('submit-btn');
+
+  // Focus indicator meets WCAG 2.4.12 AA
+  expect(state.focusIndicator.isVisible).toBe(true);
+  expect(state.focusIndicator.meetsWCAG_AA).toBe(true);
+});
+```
+
+#### Keyboard Trap Detection
+
+```typescript
+test('modal does not trap focus', async ({ page, a11y }) => {
+  await page.goto('/modal-dialog.html');
+
+  const result = await a11y.traverseSubTree('#modal-container', 20);
+  expect(result.isTrapped).toBe(false);
 });
 ```
 
@@ -87,7 +134,7 @@ npm install @a11y-oracle/cypress-plugin
 import '@a11y-oracle/cypress-plugin';
 ```
 
-**cypress/e2e/dropdown.cy.ts:**
+#### Speech Assertions
 
 ```typescript
 describe('Dropdown Navigation', () => {
@@ -108,6 +155,18 @@ describe('Dropdown Navigation', () => {
     cy.a11yPress('Tab');
     cy.a11yPress('ArrowRight');
     cy.a11yPress('Enter').should('contain', 'Clothing');
+  });
+});
+```
+
+#### Unified State (Speech + Focus + Indicator)
+
+```typescript
+it('Tab returns unified accessibility state', () => {
+  cy.a11yPressKey('Tab').then((state) => {
+    expect(state.speech).to.contain('Submit');
+    expect(state.focusedElement?.tag).to.equal('BUTTON');
+    expect(state.focusIndicator.meetsWCAG_AA).to.be.true;
   });
 });
 ```
@@ -165,6 +224,22 @@ Boolean ARIA properties are mapped to spoken strings:
 
 Heading levels are announced as `level N` (e.g., `Intro, heading, level 2`).
 
+## Unified A11yState
+
+The `pressKey()` method (available on both Playwright and Cypress) returns a single `A11yState` snapshot combining three dimensions:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `speech` | `string` | Speech output (e.g. `"Products, button, collapsed"`) |
+| `speechResult` | `SpeechResult \| null` | Full speech result with raw AXNode data |
+| `focusedElement` | `A11yFocusedElement \| null` | DOM info: tag, id, role, text, rect |
+| `focusIndicator` | `A11yFocusIndicator` | CSS analysis: isVisible, contrastRatio, meetsWCAG_AA |
+
+The `focusIndicator` field checks WCAG 2.4.12 AA compliance:
+- **`isVisible`** — Whether a visual focus indicator (outline or box-shadow) exists
+- **`contrastRatio`** — Contrast ratio of the indicator against the background (`null` if unparseable)
+- **`meetsWCAG_AA`** — `true` if visible and contrast ratio >= 3.0
+
 ## Requirements
 
 - **Chromium-based browser** (Chrome, Edge, Electron). CDP is not available for Firefox or WebKit.
@@ -180,13 +255,22 @@ This is an Nx monorepo. Common tasks:
 # Build all libraries
 npx nx run-many --targets=build
 
-# Run core engine unit tests (117 tests)
+# Run all unit tests (200+ tests)
+npx nx run-many --targets=test
+
+# Run core engine unit tests (129 tests)
 npx nx test core-engine
 
-# Run Playwright E2E tests (9 tests)
+# Run keyboard engine unit tests (17 tests)
+npx nx test keyboard-engine
+
+# Run focus analyzer unit tests (56 tests)
+npx nx test focus-analyzer
+
+# Run Playwright E2E tests (23 tests)
 npx nx e2e e2e-tests
 
-# Run Cypress E2E tests (9 tests)
+# Run Cypress E2E tests (20 tests)
 npx nx e2e cypress-e2e
 
 # Visualize project dependency graph
@@ -197,16 +281,28 @@ npx nx graph
 
 | Package | Description | Docs |
 |---------|-------------|------|
-| [`@a11y-oracle/core-engine`](libs/core-engine) | Framework-agnostic speech engine | [README](libs/core-engine/README.md) |
+| [`@a11y-oracle/core-engine`](libs/core-engine) | Framework-agnostic speech engine and unified orchestrator | [README](libs/core-engine/README.md) |
+| [`@a11y-oracle/keyboard-engine`](libs/keyboard-engine) | CDP keyboard dispatch with modifier support | [README](libs/keyboard-engine/README.md) |
+| [`@a11y-oracle/focus-analyzer`](libs/focus-analyzer) | Focus indicator analysis and keyboard trap detection | [README](libs/focus-analyzer/README.md) |
 | [`@a11y-oracle/playwright-plugin`](libs/playwright-plugin) | Playwright test fixture and wrapper | [README](libs/playwright-plugin/README.md) |
 | [`@a11y-oracle/cypress-plugin`](libs/cypress-plugin) | Cypress custom commands | [README](libs/cypress-plugin/README.md) |
 
 ## How It Works
 
-1. **CDP Connection** -- The plugin establishes a Chrome DevTools Protocol session with the browser.
-2. **Accessibility Tree Fetch** -- `Accessibility.getFullAXTree()` returns a flat array of AXNodes. Chrome has already computed accessible names per the W3C AccName spec.
-3. **Focus Detection** -- The engine finds the node with `focused: true`. When multiple nodes report focus (e.g., both `RootWebArea` and a `menuitem`), the deepest (most specific) node is selected.
-4. **Speech Computation** -- The node's role is mapped via `ROLE_TO_SPEECH`, boolean properties are mapped via `STATE_MAPPINGS`, and the parts are joined into the final speech string.
+### Speech Output
+
+1. **CDP Connection** — The plugin establishes a Chrome DevTools Protocol session with the browser.
+2. **Accessibility Tree Fetch** — `Accessibility.getFullAXTree()` returns a flat array of AXNodes. Chrome has already computed accessible names per the W3C AccName spec.
+3. **Focus Detection** — The engine finds the node with `focused: true`. When multiple nodes report focus (e.g., both `RootWebArea` and a `menuitem`), the deepest (most specific) node is selected.
+4. **Speech Computation** — The node's role is mapped via `ROLE_TO_SPEECH`, boolean properties are mapped via `STATE_MAPPINGS`, and the parts are joined into the final speech string.
+
+### Keyboard & Focus (Unified State)
+
+1. **Key Dispatch** — `Input.dispatchKeyEvent` sends native hardware-level keystrokes (keyDown + keyUp) through CDP, bypassing synthetic JavaScript events.
+2. **Focus Settle** — A configurable delay (default 50ms) allows CSS transitions and focus events to complete.
+3. **Parallel Collection** — The orchestrator collects speech, focused element info, and focus indicator data in parallel via `Promise.all`.
+4. **Focus Indicator Analysis** — `Runtime.evaluate` extracts computed CSS properties (`outline`, `box-shadow`, `background-color`), parses colors, and calculates the WCAG contrast ratio.
+5. **Keyboard Trap Detection** — The analyzer focuses the first element in a container, then presses Tab repeatedly. If focus never escapes, it's a WCAG 2.1.2 failure.
 
 ## License
 

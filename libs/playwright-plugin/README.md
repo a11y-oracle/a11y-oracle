@@ -1,6 +1,6 @@
 # @a11y-oracle/playwright-plugin
 
-Playwright integration for A11y-Oracle. Provides a test fixture and wrapper class that reads the browser's Accessibility Tree via Chrome DevTools Protocol and returns standardized speech output.
+Playwright integration for A11y-Oracle. Provides a test fixture and wrapper class that reads the browser's Accessibility Tree via Chrome DevTools Protocol, dispatches native keyboard events, and analyzes visual focus indicators.
 
 ```typescript
 import { test, expect } from '@a11y-oracle/playwright-plugin';
@@ -57,6 +57,62 @@ test.describe('Navigation', () => {
 });
 ```
 
+### Unified State API
+
+The `pressKey()` method returns a complete `A11yState` snapshot combining speech output, focused element info, and focus indicator analysis:
+
+```typescript
+test('focus indicator meets WCAG 2.4.12 AA', async ({ page, a11y }) => {
+  await page.goto('/my-page.html');
+
+  const state = await a11y.pressKey('Tab');
+
+  // Speech
+  expect(state.speech).toContain('Submit');
+  expect(state.speechResult?.role).toBe('button');
+
+  // Focused element
+  expect(state.focusedElement?.tag).toBe('BUTTON');
+  expect(state.focusedElement?.id).toBe('submit-btn');
+  expect(state.focusedElement?.tabIndex).toBe(0);
+
+  // Focus indicator CSS analysis
+  expect(state.focusIndicator.isVisible).toBe(true);
+  expect(state.focusIndicator.contrastRatio).toBeGreaterThanOrEqual(3.0);
+  expect(state.focusIndicator.meetsWCAG_AA).toBe(true);
+});
+
+test('Shift+Tab navigates backward', async ({ page, a11y }) => {
+  await page.goto('/my-page.html');
+
+  await a11y.pressKey('Tab');
+  const state1 = await a11y.pressKey('Tab');
+  const state2 = await a11y.pressKey('Tab', { shift: true });
+
+  expect(state2.focusedElement?.id).toBe(state1.focusedElement?.id);
+});
+```
+
+### Tab Order and Keyboard Trap Detection
+
+```typescript
+test('page has correct tab order', async ({ page, a11y }) => {
+  await page.goto('/my-page.html');
+
+  const report = await a11y.traverseTabOrder();
+  expect(report.totalCount).toBeGreaterThan(0);
+  expect(report.entries[0].tag).toBe('A');
+});
+
+test('modal does not trap keyboard focus', async ({ page, a11y }) => {
+  await page.goto('/modal.html');
+
+  const result = await a11y.traverseSubTree('#modal-container', 20);
+  expect(result.isTrapped).toBe(false);
+  expect(result.escapeElement).not.toBeNull();
+});
+```
+
 ### Customizing Options
 
 Override speech engine options per test group using `test.use()`:
@@ -69,7 +125,6 @@ test.describe('without landmark suffix', () => {
     await page.goto('/my-page.html');
     const tree = await a11y.getFullTreeSpeech();
     const nav = tree.find(r => r.role === 'navigation');
-    // Without includeLandmarks, role is "navigation" instead of "navigation landmark"
     expect(nav?.speech).toBe('Main, navigation');
   });
 });
@@ -81,6 +136,7 @@ Available options:
 |--------|------|---------|-------------|
 | `includeLandmarks` | `boolean` | `true` | Append "landmark" to landmark roles |
 | `includeDescription` | `boolean` | `false` | Include `aria-describedby` text in output |
+| `focusSettleMs` | `number` | `50` | Delay (ms) after key press for focus/CSS to settle |
 
 ### Manual Usage
 
@@ -107,67 +163,77 @@ test('manual setup', async ({ page }) => {
 
 ### `A11yOracle`
 
-Manages a CDP session and provides accessibility speech output for the current page.
+Manages a CDP session and provides accessibility testing for the current page.
 
-#### `constructor(page: Page, options?: SpeechEngineOptions)`
+#### `constructor(page: Page, options?: A11yOrchestratorOptions)`
 
 Create a new instance.
 
-- `page` -- Playwright `Page` to attach to.
-- `options.includeLandmarks` -- Append "landmark" to landmark roles. Default `true`.
-- `options.includeDescription` -- Include description text. Default `false`.
+- `page` — Playwright `Page` to attach to.
+- `options.includeLandmarks` — Append "landmark" to landmark roles. Default `true`.
+- `options.includeDescription` — Include description text. Default `false`.
+- `options.focusSettleMs` — Delay after key press for focus/CSS to settle. Default `50`.
 
 #### `init(): Promise<void>`
 
 Open a CDP session and enable the Accessibility domain. Must be called before any other method. The test fixture calls this automatically.
 
-#### `press(key: string): Promise<string>`
+#### Speech-Only API
 
-Press a keyboard key and return the speech for the newly focused element. Uses Playwright's `page.keyboard.press()` internally, followed by a short delay for focus/ARIA state updates.
+##### `press(key: string): Promise<string>`
+
+Press a keyboard key (via Playwright's `page.keyboard.press()`) and return the speech for the newly focused element. Returns an empty string if no element has focus.
 
 ```typescript
 const speech = await a11y.press('Tab');
 // "Products, button, collapsed"
 ```
 
-Returns an empty string if no element has focus after the key press.
-
-#### `getSpeech(): Promise<string>`
+##### `getSpeech(): Promise<string>`
 
 Get the speech string for the currently focused element without pressing a key.
 
+##### `getSpeechResult(): Promise<SpeechResult | null>`
+
+Get the full structured result for the focused element.
+
+##### `getFullTreeSpeech(): Promise<SpeechResult[]>`
+
+Get speech for all non-ignored nodes in the accessibility tree.
+
+#### Unified State API
+
+##### `pressKey(key: string, modifiers?: ModifierKeys): Promise<A11yState>`
+
+Dispatch a key via native CDP `Input.dispatchKeyEvent` and return the unified accessibility state. Unlike `press()`, this uses hardware-level key dispatch and returns the full state.
+
+```typescript
+const state = await a11y.pressKey('Tab');
+// state.speech           → "Products, button, collapsed"
+// state.focusedElement   → { tag: 'BUTTON', id: '...', ... }
+// state.focusIndicator   → { isVisible: true, meetsWCAG_AA: true, ... }
+```
+
+##### `getA11yState(): Promise<A11yState>`
+
+Get the current unified state without pressing a key.
+
 ```typescript
 await page.focus('#my-button');
-const speech = await a11y.getSpeech();
-// "Submit, button"
+const state = await a11y.getA11yState();
 ```
 
-#### `getSpeechResult(): Promise<SpeechResult | null>`
+##### `traverseTabOrder(): Promise<TabOrderReport>`
 
-Get the full structured result for the focused element. Returns `null` if no element has focus.
+Extract all tabbable elements in DOM tab order.
 
-```typescript
-const result = await a11y.getSpeechResult();
-if (result) {
-  console.log(result.speech);  // "Products, button, collapsed"
-  console.log(result.name);    // "Products"
-  console.log(result.role);    // "button"
-  console.log(result.states);  // ["collapsed"]
-  console.log(result.rawNode); // Full CDP AXNode
-}
-```
+##### `traverseSubTree(selector: string, maxTabs?: number): Promise<TraversalResult>`
 
-#### `getFullTreeSpeech(): Promise<SpeechResult[]>`
+Detect whether a container traps keyboard focus (WCAG 2.1.2).
 
-Get speech for all non-ignored nodes in the accessibility tree. Useful for asserting on landmarks, headings, or structural elements that don't have focus.
+#### Lifecycle
 
-```typescript
-const all = await a11y.getFullTreeSpeech();
-const headings = all.filter(r => r.role.includes('heading'));
-const landmarks = all.filter(r => r.role.includes('landmark'));
-```
-
-#### `dispose(): Promise<void>`
+##### `dispose(): Promise<void>`
 
 Detach the CDP session and free resources. The test fixture calls this automatically.
 
@@ -178,7 +244,7 @@ The `test` export extends Playwright's `test` with two fixtures:
 | Fixture | Type | Description |
 |---------|------|-------------|
 | `a11y` | `A11yOracle` | Initialized instance, auto-disposed after each test |
-| `a11yOptions` | `SpeechEngineOptions` | Override via `test.use()` |
+| `a11yOptions` | `A11yOrchestratorOptions` | Override via `test.use()` |
 
 ### Exports
 
@@ -191,6 +257,21 @@ export { A11yOracle } from '@a11y-oracle/playwright-plugin';
 
 // Fixture types
 export type { A11yOracleFixtures } from '@a11y-oracle/playwright-plugin';
+
+// Re-exported types from core-engine
+export type {
+  A11yState,
+  A11yFocusedElement,
+  A11yFocusIndicator,
+  A11yOrchestratorOptions,
+  SpeechResult,
+  SpeechEngineOptions,
+  ModifierKeys,
+  TabOrderReport,
+  TabOrderEntry,
+  TraversalResult,
+  FocusIndicator,
+} from '@a11y-oracle/playwright-plugin';
 ```
 
 ## Playwright Config
@@ -221,10 +302,10 @@ export default defineConfig({
 ## How It Works
 
 1. The fixture opens a CDP session via `page.context().newCDPSession(page)`
-2. It enables the `Accessibility` domain on that session
-3. On `press(key)`, Playwright sends the key event and waits 50ms for focus/ARIA updates
-4. The engine calls `Accessibility.getFullAXTree()` to fetch the full accessibility tree
-5. It finds the focused node and maps its role, name, and states to a speech string
+2. It creates both a `SpeechEngine` and an `A11yOrchestrator` on that session
+3. **`press(key)`** — Uses Playwright's keyboard API, waits 50ms, then reads the AXTree for speech
+4. **`pressKey(key)`** — Uses native CDP `Input.dispatchKeyEvent` for hardware-level dispatch, waits `focusSettleMs`, then collects speech + focused element + focus indicator in parallel
+5. Focus indicator analysis runs `Runtime.evaluate` to read computed CSS styles and calculate contrast ratios
 6. On dispose, the CDP session is detached
 
 The speech format follows: `[Computed Name], [Role], [State/Properties]`
