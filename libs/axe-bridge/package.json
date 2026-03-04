@@ -1,6 +1,32 @@
 {
   "name": "@a11y-oracle/axe-bridge",
   "version": "0.0.1",
+  "description": "Axe-core result post-processor that resolves 10 incomplete rules using visual analysis, keyboard interaction, and CDP inspection",
+  "license": "MIT",
+  "author": "HSA Health Plan",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HSAHealthPlan/a11y-oracle.git",
+    "directory": "libs/axe-bridge"
+  },
+  "bugs": {
+    "url": "https://github.com/HSAHealthPlan/a11y-oracle/issues"
+  },
+  "homepage": "https://github.com/HSAHealthPlan/a11y-oracle/tree/main/libs/axe-bridge",
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "axe-core",
+    "wcag",
+    "color-contrast",
+    "focus-indicator",
+    "target-size",
+    "cdp",
+    "testing"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

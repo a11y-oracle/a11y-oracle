@@ -1,6 +1,30 @@
 {
   "name": "@a11y-oracle/keyboard-engine",
   "version": "0.0.1",
+  "description": "Native CDP keyboard dispatch with modifier key support and focused element introspection",
+  "license": "MIT",
+  "author": "HSA Health Plan",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HSAHealthPlan/a11y-oracle.git",
+    "directory": "libs/keyboard-engine"
+  },
+  "bugs": {
+    "url": "https://github.com/HSAHealthPlan/a11y-oracle/issues"
+  },
+  "homepage": "https://github.com/HSAHealthPlan/a11y-oracle/tree/main/libs/keyboard-engine",
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "keyboard",
+    "cdp",
+    "chrome-devtools-protocol",
+    "wcag",
+    "testing"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

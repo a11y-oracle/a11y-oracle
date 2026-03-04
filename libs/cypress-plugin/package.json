@@ -1,6 +1,30 @@
 {
   "name": "@a11y-oracle/cypress-plugin",
   "version": "0.0.1",
+  "description": "Cypress custom commands for accessibility speech assertions with iframe-aware CDP routing",
+  "license": "MIT",
+  "author": "HSA Health Plan",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HSAHealthPlan/a11y-oracle.git",
+    "directory": "libs/cypress-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/HSAHealthPlan/a11y-oracle/issues"
+  },
+  "homepage": "https://github.com/HSAHealthPlan/a11y-oracle/tree/main/libs/cypress-plugin",
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "cypress",
+    "screen-reader",
+    "wcag",
+    "testing",
+    "e2e"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
