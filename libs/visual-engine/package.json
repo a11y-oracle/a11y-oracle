@@ -20,7 +20,7 @@
   "dependencies": {
     "@a11y-oracle/cdp-types": "0.0.1",
     "@a11y-oracle/focus-analyzer": "0.0.1",
-    "pngjs": "^7.0.0",
+    "fast-png": "^8.0.0",
     "tslib": "^2.3.0"
   }
 }

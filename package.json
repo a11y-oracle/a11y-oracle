@@ -24,7 +24,6 @@
     "@swc/helpers": "0.5.18",
     "@types/chrome-remote-interface": "^0.33.0",
     "@types/node": "20.19.9",
-    "@types/pngjs": "^6.0.5",
     "@vitest/coverage-v8": "^4.0.18",
     "chrome-remote-interface": "^0.34.0",
     "cypress": "^15.11.0",
@@ -55,6 +54,6 @@
     }
   },
   "dependencies": {
-    "pngjs": "^7.0.0"
+    "fast-png": "^8.0.0"
   }
 }

@@ -9,6 +9,15 @@
   "references": [
     {
       "path": "../../libs/cypress-plugin"
+    },
+    {
+      "path": "../../libs/visual-engine"
+    },
+    {
+      "path": "../../libs/axe-bridge"
+    },
+    {
+      "path": "../../libs/cdp-types"
     }
   ]
 }

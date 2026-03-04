@@ -12,6 +12,19 @@ import type { RGBColor } from '@a11y-oracle/focus-analyzer';
 import type { ElementComputedStyles } from './types.js';
 
 /**
+ * Decode a base64 string to Uint8Array.
+ * Cross-platform: works in both Node.js (≥16) and browsers.
+ */
+function base64ToUint8Array(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/**
  * JavaScript expression to extract computed styles relevant to
  * visual contrast analysis from a target element.
  *
@@ -156,7 +169,7 @@ export async function isDynamicContent(
 export async function captureElementBackground(
   cdp: CDPSessionLike,
   selector: string,
-): Promise<{ pngBuffer: Buffer; textColor: RGBColor | null } | null> {
+): Promise<{ pngBuffer: Uint8Array; textColor: RGBColor | null } | null> {
   // Get info and hide text in one atomic operation
   const infoResult = (await cdp.send('Runtime.evaluate', {
     expression: getCaptureInfoAndHideScript(selector),
@@ -189,7 +202,7 @@ export async function captureElementBackground(
       },
     })) as { data: string };
 
-    const pngBuffer = Buffer.from(screenshotResult.data, 'base64');
+    const pngBuffer = base64ToUint8Array(screenshotResult.data);
     const textColor = parseColor(info.color);
 
     return { pngBuffer, textColor };

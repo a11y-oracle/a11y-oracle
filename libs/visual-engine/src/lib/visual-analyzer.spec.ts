@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { PNG } from 'pngjs';
+import { encode } from 'fast-png';
 import { VisualContrastAnalyzer } from './visual-analyzer.js';
 import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
 
@@ -10,30 +10,30 @@ function createUniformPng(
   b: number,
   width = 10,
   height = 10,
-): Buffer {
-  const png = new PNG({ width, height });
+): Uint8Array {
+  const data = new Uint8Array(width * height * 4);
   for (let i = 0; i < width * height; i++) {
     const offset = i * 4;
-    png.data[offset] = r;
-    png.data[offset + 1] = g;
-    png.data[offset + 2] = b;
-    png.data[offset + 3] = 255;
+    data[offset] = r;
+    data[offset + 1] = g;
+    data[offset + 2] = b;
+    data[offset + 3] = 255;
   }
-  return PNG.sync.write(png);
+  return encode({ width, height, data, channels: 4, depth: 8 });
 }
 
 /** Create a gradient PNG (left=white, right=black). */
-function createGradientPng(width = 10, height = 1): Buffer {
-  const png = new PNG({ width, height });
+function createGradientPng(width = 10, height = 1): Uint8Array {
+  const data = new Uint8Array(width * height * 4);
   for (let i = 0; i < width; i++) {
     const v = Math.round(255 * (1 - i / (width - 1)));
     const offset = i * 4;
-    png.data[offset] = v;
-    png.data[offset + 1] = v;
-    png.data[offset + 2] = v;
-    png.data[offset + 3] = 255;
+    data[offset] = v;
+    data[offset + 1] = v;
+    data[offset + 2] = v;
+    data[offset + 3] = 255;
   }
-  return PNG.sync.write(png);
+  return encode({ width, height, data, channels: 4, depth: 8 });
 }
 
 type SendFn = (
@@ -59,7 +59,7 @@ function buildMockCDP(opts: {
     width: number;
     height: number;
   } | null;
-  screenshotBuffer?: Buffer;
+  screenshotBuffer?: Uint8Array;
 }): CDPSessionLike {
   const defaultStyles = {
     color: 'rgb(0, 0, 0)',
@@ -110,7 +110,7 @@ function buildMockCDP(opts: {
 
     if (method === 'Page.captureScreenshot') {
       const buf = opts.screenshotBuffer ?? createUniformPng(255, 255, 255);
-      return { data: buf.toString('base64') };
+      return { data: Buffer.from(buf).toString('base64') };
     }
 
     return {};

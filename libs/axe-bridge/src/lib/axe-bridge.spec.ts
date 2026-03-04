@@ -1,20 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import { PNG } from 'pngjs';
+import { encode } from 'fast-png';
 import { resolveIncompleteContrast } from './axe-bridge.js';
 import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
 import type { AxeResults, AxeNode, AxeRule } from './types.js';
 
 /** Create a synthetic PNG buffer of uniform color. */
-function createUniformPng(r: number, g: number, b: number): Buffer {
-  const png = new PNG({ width: 10, height: 10 });
+function createUniformPng(r: number, g: number, b: number): Uint8Array {
+  const width = 10;
+  const height = 10;
+  const data = new Uint8Array(width * height * 4);
   for (let i = 0; i < 100; i++) {
     const offset = i * 4;
-    png.data[offset] = r;
-    png.data[offset + 1] = g;
-    png.data[offset + 2] = b;
-    png.data[offset + 3] = 255;
+    data[offset] = r;
+    data[offset + 1] = g;
+    data[offset + 2] = b;
+    data[offset + 3] = 255;
   }
-  return PNG.sync.write(png);
+  return encode({ width, height, data, channels: 4, depth: 8 });
 }
 
 function makeNode(selector: string, overrides: Partial<AxeNode> = {}): AxeNode {
@@ -134,7 +136,7 @@ function buildMockCDP(opts: {
       if (method === 'Page.captureScreenshot') {
         const bg = backgrounds[currentSelector] ?? { r: 255, g: 255, b: 255 };
         const buf = createUniformPng(bg.r, bg.g, bg.b);
-        return { data: buf.toString('base64') };
+        return { data: Buffer.from(buf).toString('base64') };
       }
 
       return {};

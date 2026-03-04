@@ -7,6 +7,12 @@
   "include": ["src/**/*.ts", "playwright.config.ts"],
   "references": [
     {
+      "path": "../../libs/axe-bridge"
+    },
+    {
+      "path": "../../libs/visual-engine"
+    },
+    {
       "path": "../../libs/audit-formatter"
     },
     {

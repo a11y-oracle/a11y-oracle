@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PNG } from 'pngjs';
+import { encode } from 'fast-png';
 import { decodePng, findLuminanceExtremes, extractPixelLuminance } from './pixel-analysis.js';
 import type { RGBColor } from '@a11y-oracle/focus-analyzer';
 
@@ -8,16 +8,16 @@ function createSyntheticPng(
   pixels: Array<{ r: number; g: number; b: number; a: number }>,
   width: number,
   height: number,
-): Buffer {
-  const png = new PNG({ width, height });
+): Uint8Array {
+  const data = new Uint8Array(width * height * 4);
   for (let i = 0; i < pixels.length; i++) {
     const offset = i * 4;
-    png.data[offset] = pixels[i].r;
-    png.data[offset + 1] = pixels[i].g;
-    png.data[offset + 2] = pixels[i].b;
-    png.data[offset + 3] = pixels[i].a;
+    data[offset] = pixels[i].r;
+    data[offset + 1] = pixels[i].g;
+    data[offset + 2] = pixels[i].b;
+    data[offset + 3] = pixels[i].a;
   }
-  return PNG.sync.write(png);
+  return encode({ width, height, data, channels: 4, depth: 8 });
 }
 
 const WHITE = { r: 255, g: 255, b: 255, a: 255 };

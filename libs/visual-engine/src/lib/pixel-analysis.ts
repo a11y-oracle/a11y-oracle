@@ -6,7 +6,7 @@
  * then calculates contrast ratios against the foreground text color.
  */
 
-import { PNG } from 'pngjs';
+import { decode } from 'fast-png';
 import {
   relativeLuminance,
   contrastRatio,
@@ -20,17 +20,49 @@ import type { PixelAnalysisResult } from './types.js';
  * @param buffer - A PNG-encoded buffer (e.g. from CDP screenshot).
  * @returns Width, height, and RGBA pixel data (4 bytes per pixel).
  */
-export function decodePng(buffer: Buffer): {
+export function decodePng(input: Uint8Array): {
   width: number;
   height: number;
   data: Uint8Array;
 } {
-  const png = PNG.sync.read(buffer);
-  return {
-    width: png.width,
-    height: png.height,
-    data: new Uint8Array(png.data),
-  };
+  const png = decode(input);
+  const channels = png.channels ?? 4;
+
+  // fast-png returns data matching the PNG's channel count.
+  // Normalize to RGBA (4 bytes per pixel) for consistent downstream processing.
+  if (channels === 4) {
+    return {
+      width: png.width,
+      height: png.height,
+      data: new Uint8Array(png.data),
+    };
+  }
+
+  if (channels === 3) {
+    // RGB → RGBA: inject alpha = 255 for every pixel
+    const totalPixels = png.width * png.height;
+    const rgba = new Uint8Array(totalPixels * 4);
+    for (let i = 0; i < totalPixels; i++) {
+      rgba[i * 4] = png.data[i * 3];
+      rgba[i * 4 + 1] = png.data[i * 3 + 1];
+      rgba[i * 4 + 2] = png.data[i * 3 + 2];
+      rgba[i * 4 + 3] = 255;
+    }
+    return { width: png.width, height: png.height, data: rgba };
+  }
+
+  // Grayscale (1) or Grayscale+Alpha (2) — expand to RGBA
+  const totalPixels = png.width * png.height;
+  const rgba = new Uint8Array(totalPixels * 4);
+  for (let i = 0; i < totalPixels; i++) {
+    const gray = png.data[i * channels];
+    const alpha = channels === 2 ? png.data[i * channels + 1] : 255;
+    rgba[i * 4] = gray;
+    rgba[i * 4 + 1] = gray;
+    rgba[i * 4 + 2] = gray;
+    rgba[i * 4 + 3] = alpha;
+  }
+  return { width: png.width, height: png.height, data: rgba };
 }
 
 /**
@@ -105,7 +137,7 @@ export function findLuminanceExtremes(
  * @returns Pixel analysis result, or null if no opaque pixels were found.
  */
 export function extractPixelLuminance(
-  pngBuffer: Buffer,
+  pngBuffer: Uint8Array,
   textColor: RGBColor,
 ): PixelAnalysisResult | null {
   const { width, height, data } = decodePng(pngBuffer);

@@ -153,4 +153,4 @@ import type {
 
 - **`@a11y-oracle/focus-analyzer`** — Reuses `relativeLuminance()`, `contrastRatio()`, and `parseColor()` for WCAG-compliant color math
 - **`@a11y-oracle/cdp-types`** — `CDPSessionLike` interface for framework-agnostic CDP access
-- **`pngjs`** — Pure JavaScript PNG decoder (no native dependencies)
+- **`fast-png`** — Pure TypeScript PNG decoder/encoder (browser + Node.js compatible, no native dependencies)
