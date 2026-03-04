@@ -38,6 +38,9 @@ testem.log
 .DS_Store
 Thumbs.db
 
+# npm auth tokens
+.npmrc
+
 # Lock files for package managers not used by this project
 pnpm-lock.yaml
 yarn.lock
