@@ -2,7 +2,17 @@
   "name": "@a11y-oracle/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "build": "npx nx run-many -t build",
+    "test": "npx nx run-many -t test",
+    "typecheck": "npx nx run-many -t typecheck",
+    "release": "npx nx release",
+    "release:dry-run": "npx nx release --dry-run",
+    "release:version": "npx nx release version",
+    "release:publish": "npx nx release publish",
+    "local-registry": "npx nx local-registry",
+    "publish:local": "npx nx release publish --registry http://localhost:4873"
+  },
   "private": true,
   "devDependencies": {
     "@nx/js": "22.5.1",
@@ -14,6 +24,7 @@
     "@swc/helpers": "0.5.18",
     "@types/chrome-remote-interface": "^0.33.0",
     "@types/node": "20.19.9",
+    "@types/pngjs": "^6.0.5",
     "@vitest/coverage-v8": "^4.0.18",
     "chrome-remote-interface": "^0.34.0",
     "cypress": "^15.11.0",
@@ -42,5 +53,8 @@
         }
       }
     }
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0"
   }
 }

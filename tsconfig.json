@@ -25,6 +25,12 @@
       "path": "./libs/audit-formatter"
     },
     {
+      "path": "./libs/visual-engine"
+    },
+    {
+      "path": "./libs/axe-bridge"
+    },
+    {
       "path": "./apps/cypress-e2e"
     }
   ]

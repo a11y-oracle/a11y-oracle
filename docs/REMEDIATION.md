@@ -122,3 +122,41 @@ const trapIssues = formatTrapIssue(result, '#container', { project: 'my-app', sp
 ```
 
 See the [@a11y-oracle/audit-formatter README](../libs/audit-formatter/README.md) for the full API.
+
+---
+
+## Resolving Incomplete Color Contrast
+
+axe-core flags text over gradients, background images, and complex CSS as "incomplete" because it cannot determine the actual background color from CSS alone. The `@a11y-oracle/axe-bridge` package resolves these warnings using visual analysis.
+
+### How It Works
+
+Call `resolveIncompleteContrast()` immediately after `axe.run()` while the page is still live and the CDP session is available:
+
+```typescript
+import { resolveIncompleteContrast } from '@a11y-oracle/axe-bridge';
+
+// Run axe-core
+const axeResults = await axe.run(document);
+
+// Resolve incomplete color-contrast warnings
+const resolved = await resolveIncompleteContrast(cdpSession, axeResults);
+
+// Assert on resolved results
+expect(resolved.violations).toHaveLength(0);
+```
+
+The bridge analyzes each incomplete `color-contrast` node through a two-stage pipeline:
+
+1. **CSS Halo Check** (fast path) — Detects `-webkit-text-stroke` or multi-directional `text-shadow` that guarantees text readability without needing a screenshot.
+
+2. **Pixel Analysis** (fallback) — Captures a screenshot of the element's background with text hidden, scans for the lightest and darkest pixels, and applies the WCAG Safe Assessment Matrix:
+   - **Pass**: Worst-case contrast (against lightest background) meets threshold
+   - **Violation**: Best-case contrast (against darkest background) fails threshold
+   - **Incomplete**: Split decision — one extreme passes, the other fails
+
+### Large Text
+
+The bridge automatically detects large text from axe-core's check metadata and applies the WCAG reduced threshold of 3.0:1 (instead of 4.5:1) for text >= 24px or bold text >= 18.66px.
+
+See the [@a11y-oracle/axe-bridge README](../libs/axe-bridge/README.md) and [@a11y-oracle/visual-engine README](../libs/visual-engine/README.md) for full API details.

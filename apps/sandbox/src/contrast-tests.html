@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Contrast Tests - A11y-Oracle Sandbox</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 2rem;
+      background-color: #ffffff;
+      color: #333;
+    }
+
+    h1 { margin-bottom: 1.5rem; }
+    h2 { margin-top: 2rem; margin-bottom: 1rem; color: #555; }
+    section { margin-bottom: 2rem; padding: 1.5rem; border: 1px solid #ddd; border-radius: 4px; }
+    p.description { margin-bottom: 1rem; color: #666; font-style: italic; }
+
+    /* --- Gradient backgrounds --- */
+
+    #gradient-pass {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #ffffff;
+      padding: 1rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    #split-gradient {
+      background: linear-gradient(to right, #ffffff 0%, #000000 100%);
+      color: #ffffff;
+      padding: 1rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    /* --- Halo via -webkit-text-stroke --- */
+
+    #stroke-halo {
+      background-color: #f0f0f0;
+      color: #999999;
+      -webkit-text-stroke-width: 1.5px;
+      -webkit-text-stroke-color: #000000;
+      padding: 1rem;
+      font-size: 1.25rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    #stroke-thin {
+      background-color: #f0f0f0;
+      color: #999999;
+      -webkit-text-stroke-width: 0.5px;
+      -webkit-text-stroke-color: #000000;
+      padding: 1rem;
+      font-size: 1.25rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    /* --- Halo via text-shadow --- */
+
+    #shadow-halo {
+      background-color: #f0f0f0;
+      color: #aaaaaa;
+      text-shadow:
+        1px 1px 0 #000000,
+        -1px -1px 0 #000000,
+        1px -1px 0 #000000,
+        -1px 1px 0 #000000;
+      padding: 1rem;
+      font-size: 1.25rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    #blur-shadow {
+      background: linear-gradient(to bottom, #cccccc, #ffffff);
+      color: #777777;
+      text-shadow: 2px 2px 4px #000000;
+      padding: 1rem;
+      font-size: 1.25rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    /* --- Solid background controls --- */
+
+    #solid-control {
+      background-color: #ffffff;
+      color: #1a1a1a;
+      padding: 1rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    #solid-fail {
+      background-color: #ffffff;
+      color: #cccccc;
+      padding: 1rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    /* --- Large text --- */
+
+    #large-text-pass {
+      background: linear-gradient(to right, #e0e0e0, #f5f5f5);
+      color: #767676;
+      padding: 1rem;
+      font-size: 24px;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    #large-text-bold {
+      background: linear-gradient(to right, #e0e0e0, #f5f5f5);
+      color: #767676;
+      padding: 1rem;
+      font-size: 18.66px;
+      font-weight: bold;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    /* --- Background image --- */
+
+    #bg-image {
+      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="50"><rect fill="%23336699" width="200" height="50"/></svg>');
+      background-size: cover;
+      color: #ffffff;
+      padding: 1rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Color Contrast Test Fixtures</h1>
+    <p class="description">
+      These elements test various color contrast scenarios for the visual-engine
+      and axe-bridge libraries. Each demonstrates a different path through the
+      incomplete color contrast resolution pipeline.
+    </p>
+
+    <section>
+      <h2>Gradient Backgrounds (Pixel Pipeline)</h2>
+      <p class="description">
+        These elements have gradient backgrounds that axe-core cannot resolve.
+        The visual-engine pixel pipeline captures a screenshot and analyzes luminance.
+      </p>
+
+      <div id="gradient-pass">
+        Dark gradient background with white text — should pass pixel analysis
+        (all background pixels are dark, contrast is high).
+      </div>
+
+      <div id="split-gradient">
+        White-to-black gradient with white text — should produce a split decision
+        (passes against dark side, fails against light side).
+      </div>
+    </section>
+
+    <section>
+      <h2>CSS Halo — Text Stroke</h2>
+      <p class="description">
+        These elements use <code>-webkit-text-stroke</code> to create a halo effect.
+        The halo detector CSS fast-path checks stroke width and color contrast.
+      </p>
+
+      <div id="stroke-halo">
+        Low-contrast text with 1.5px black stroke on light bg — halo should pass
+        (stroke color vs background has good contrast).
+      </div>
+
+      <div id="stroke-thin">
+        Low-contrast text with 0.5px stroke — halo should be rejected
+        (stroke width below 1px minimum).
+      </div>
+    </section>
+
+    <section>
+      <h2>CSS Halo — Text Shadow</h2>
+      <p class="description">
+        These elements use <code>text-shadow</code> for halo effects.
+        Valid halos require 4+ directions with zero blur.
+      </p>
+
+      <div id="shadow-halo">
+        Low-contrast text with 4-direction zero-blur black shadow on solid bg —
+        halo should pass (covers all quadrants, shadow color vs bg has good contrast).
+      </div>
+
+      <div id="blur-shadow">
+        Text with blurred shadow on gradient — halo rejected (blur > 0), falls
+        through to pixel pipeline on gradient background.
+      </div>
+    </section>
+
+    <section>
+      <h2>Solid Background Controls</h2>
+      <p class="description">
+        These elements have solid backgrounds. axe-core resolves these natively;
+        they serve as controls to verify the bridge doesn't interfere.
+      </p>
+
+      <div id="solid-control">
+        Dark text on white background — standard passing contrast (~15.3:1).
+      </div>
+
+      <div id="solid-fail">
+        Light gray text on white background — clear contrast failure (~1.6:1).
+      </div>
+    </section>
+
+    <section>
+      <h2>Large Text Thresholds</h2>
+      <p class="description">
+        Large text (>= 24px or >= 18.66px bold) uses a reduced contrast threshold
+        of 3.0:1 instead of the standard 4.5:1.
+      </p>
+
+      <div id="large-text-pass">
+        24px gray text on gradient — should pass with 3.0 large-text threshold
+        (contrast ratio ~4.5:1 which fails normal but passes large).
+      </div>
+
+      <div id="large-text-bold">
+        18.66px bold gray text on gradient — also qualifies as large text,
+        should pass with 3.0 threshold.
+      </div>
+    </section>
+
+    <section>
+      <h2>Background Image</h2>
+      <p class="description">
+        Elements with background images trigger the complex-background path,
+        skipping halo detection and going straight to the pixel pipeline.
+      </p>
+
+      <div id="bg-image">
+        White text on SVG background image — halo detector skips (complex bg),
+        pixel pipeline captures actual rendered background.
+      </div>
+    </section>
+  </main>
+</body>
+</html>
