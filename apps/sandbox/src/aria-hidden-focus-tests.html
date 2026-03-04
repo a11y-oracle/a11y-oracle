@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aria Hidden Focus Tests</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <main>
+    <h1>Aria Hidden Focus Tests</h1>
+
+    <section>
+      <h2>Reachable Button in aria-hidden (Violation)</h2>
+      <div aria-hidden="true">
+        <button id="hidden-reachable">Hidden but Reachable</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Properly Hidden (Pass)</h2>
+      <div aria-hidden="true">
+        <button id="hidden-proper" tabindex="-1">Properly Hidden</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Regular Interactive Elements</h2>
+      <button id="normal-btn-1">Normal Button 1</button>
+      <button id="normal-btn-2">Normal Button 2</button>
+    </section>
+  </main>
+</body>
+</html>

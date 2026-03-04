@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Content on Hover Tests</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .tooltip-trigger { position: relative; display: inline-block; padding: 10px 20px; margin: 20px; background: #eee; cursor: pointer; }
+    .tooltip-trigger .tooltip { display: none; position: absolute; top: 100%; left: 0; background: #333; color: #fff; padding: 8px 12px; border-radius: 4px; white-space: nowrap; z-index: 100; }
+
+    /* Good tooltip: hoverable and dismissible */
+    #trigger-good:hover .tooltip,
+    #trigger-good .tooltip:hover { display: block; }
+
+    /* Non-hoverable: disappears when mouse leaves trigger */
+    #trigger-non-hoverable:hover .tooltip { display: block; }
+
+    /* Non-dismissible: always shows on hover, escape doesn't work */
+    #trigger-non-dismissible:hover .tooltip { display: block; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Content on Hover Tests</h1>
+
+    <section>
+      <h2>Hoverable + Dismissible (Pass)</h2>
+      <div class="tooltip-trigger" id="trigger-good">
+        Hover me (good)
+        <div class="tooltip" role="tooltip" id="tooltip-good">Helpful information</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Non-Hoverable (Violation)</h2>
+      <div class="tooltip-trigger" id="trigger-non-hoverable">
+        Hover me (non-hoverable)
+        <div class="tooltip" role="tooltip" id="tooltip-non-hoverable">This tooltip disappears</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Non-Dismissible (Violation)</h2>
+      <div class="tooltip-trigger" id="trigger-non-dismissible">
+        Hover me (non-dismissible)
+        <div class="tooltip" role="tooltip" id="tooltip-non-dismissible">Can't dismiss me</div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

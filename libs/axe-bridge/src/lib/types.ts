@@ -120,3 +120,141 @@ export interface ContrastResolutionOptions {
   /** Minimum contrast ratio for large text. Overrides wcagLevel. */
   largeTextThreshold?: number;
 }
+
+// ─── Per-resolver option interfaces ─────────────────────────────
+
+/** Options for the `link-in-text-block` resolver. */
+export interface LinkInTextBlockOptions {
+  /**
+   * Minimum contrast ratio between link color and surrounding text
+   * to count as sufficient visual differentiation.
+   * Default: `3.0`.
+   */
+  linkTextContrastThreshold?: number;
+}
+
+/** Options for the `target-size` resolver. */
+export interface TargetSizeOptions {
+  /**
+   * Minimum dimension (width and height) in CSS pixels.
+   * Default: `24`.
+   */
+  minSize?: number;
+}
+
+/** Options for the `scrollable-region-focusable` resolver. */
+export interface ScrollableRegionOptions {
+  /**
+   * Maximum number of focusable children to inspect inside a
+   * scrollable container before giving up.
+   * Default: `50`.
+   */
+  maxChildren?: number;
+}
+
+/** Options for the `skip-link` resolver. */
+export interface SkipLinkOptions {
+  /**
+   * Delay in milliseconds after focus for CSS transitions to settle.
+   * Default: `100`.
+   */
+  focusSettleDelay?: number;
+}
+
+/** Options for the `aria-hidden-focus` resolver. */
+export interface AriaHiddenFocusOptions {
+  /**
+   * Maximum number of Tab presses during keyboard traversal.
+   * Default: `100`.
+   */
+  maxTabs?: number;
+}
+
+/** Options for the `focus-indicator` resolver. */
+export interface FocusIndicatorOptions {
+  /**
+   * Delay in milliseconds after focus for CSS transitions to settle.
+   * Default: `100`.
+   */
+  focusSettleDelay?: number;
+  /**
+   * Minimum percentage of pixels that must differ between resting
+   * and focused screenshots to count as a visible indicator.
+   * Default: `0.1`.
+   */
+  diffThreshold?: number;
+}
+
+/** Options for the `content-on-hover` resolver. */
+export interface ContentOnHoverOptions {
+  /**
+   * Delay in milliseconds after hover for content to appear.
+   * Default: `300`.
+   */
+  hoverDelay?: number;
+  /**
+   * Delay in milliseconds after dismiss action to check if content
+   * has disappeared.
+   * Default: `200`.
+   */
+  dismissDelay?: number;
+}
+
+/** Options for the `frame-tested` resolver. */
+export interface FrameTestedOptions {
+  /**
+   * The complete axe-core source code as a string. Required for
+   * injection into cross-origin iframes.
+   */
+  axeSource?: string;
+  /**
+   * Timeout in milliseconds for axe-core execution inside an iframe.
+   * Default: `30000`.
+   */
+  iframeTimeout?: number;
+}
+
+/**
+ * Combined options for the `resolveAllIncomplete` orchestrator.
+ *
+ * Each property corresponds to a resolver's options interface.
+ * The `skipRules` array allows excluding specific resolvers.
+ */
+export interface IncompleteResolutionOptions {
+  /** WCAG conformance level (applied to contrast resolver). */
+  wcagLevel?: WcagLevel;
+
+  /** Options for the `color-contrast` resolver. */
+  contrast?: ContrastResolutionOptions;
+
+  /** Options for the `link-in-text-block` resolver. */
+  linkInTextBlock?: LinkInTextBlockOptions;
+
+  /** Options for the `target-size` resolver. */
+  targetSize?: TargetSizeOptions;
+
+  /** Options for the `scrollable-region-focusable` resolver. */
+  scrollableRegion?: ScrollableRegionOptions;
+
+  /** Options for the `skip-link` resolver. */
+  skipLink?: SkipLinkOptions;
+
+  /** Options for the `aria-hidden-focus` resolver. */
+  ariaHiddenFocus?: AriaHiddenFocusOptions;
+
+  /** Options for the `focus-indicator` resolver. */
+  focusIndicator?: FocusIndicatorOptions;
+
+  /** Options for the `content-on-hover` resolver. */
+  contentOnHover?: ContentOnHoverOptions;
+
+  /** Options for the `frame-tested` resolver. */
+  frameTested?: FrameTestedOptions;
+
+  /**
+   * Rule IDs to skip during resolution. Matching resolvers
+   * will not be invoked and their incomplete entries will be
+   * left untouched.
+   */
+  skipRules?: string[];
+}

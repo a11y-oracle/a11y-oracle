@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skip Link Tests</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    #skip-visible {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      z-index: 1000;
+      background: #000;
+      color: #fff;
+      padding: 10px 20px;
+      text-decoration: none;
+    }
+    #skip-visible:focus {
+      left: 0;
+    }
+    #skip-hidden {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      background: #000;
+      color: #fff;
+      padding: 10px 20px;
+      text-decoration: none;
+    }
+    /* No :focus style — stays hidden */
+  </style>
+</head>
+<body>
+  <a href="#main-content" id="skip-visible">Skip to Main Content</a>
+  <a href="#main-content" id="skip-hidden">Skip Navigation</a>
+
+  <nav>
+    <ul>
+      <li><a href="#">Home</a></li>
+      <li><a href="#">About</a></li>
+      <li><a href="#">Contact</a></li>
+    </ul>
+  </nav>
+
+  <main id="main-content">
+    <h1>Skip Link Tests</h1>
+    <p>The first skip link should become visible on focus. The second stays hidden.</p>
+  </main>
+</body>
+</html>

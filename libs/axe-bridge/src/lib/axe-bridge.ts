@@ -10,11 +10,16 @@ import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
 import { VisualContrastAnalyzer } from '@a11y-oracle/visual-engine';
 import type {
   AxeResults,
-  AxeRule,
   AxeNode,
   ContrastResolutionOptions,
 } from './types.js';
 import { getContrastThresholds } from './wcag-thresholds.js';
+import {
+  getSelector,
+  cloneResults,
+  findIncompleteRule,
+  applyPromotions,
+} from './resolver-pipeline.js';
 
 /**
  * Determine the effective contrast threshold for an axe node.
@@ -48,23 +53,6 @@ function getEffectiveThreshold(
   }
 
   return threshold;
-}
-
-/**
- * Extract the innermost CSS selector from an axe node's target.
- *
- * axe-core represents selectors as arrays where shadow DOM targets
- * have multiple entries. We use the last (innermost) selector.
- */
-function getSelector(node: AxeNode): string {
-  return node.target[node.target.length - 1] ?? '';
-}
-
-/**
- * Deep-clone an AxeResults object to avoid mutating the original.
- */
-function cloneResults(results: AxeResults): AxeResults {
-  return JSON.parse(JSON.stringify(results));
 }
 
 /**
@@ -110,12 +98,10 @@ export async function resolveIncompleteContrast(
     options?.largeTextThreshold ?? levelThresholds?.largeText ?? 3.0;
 
   // Find the color-contrast rule in incomplete results
-  const ccIndex = clone.incomplete.findIndex(
-    (r) => r.id === 'color-contrast',
-  );
-  if (ccIndex === -1) return clone;
+  const found = findIncompleteRule(clone, 'color-contrast');
+  if (!found) return clone;
 
-  const ccRule = clone.incomplete[ccIndex];
+  const { index: ccIndex, rule: ccRule } = found;
   const analyzer = new VisualContrastAnalyzer(cdp);
 
   const passNodes: AxeNode[] = [];
@@ -150,53 +136,11 @@ export async function resolveIncompleteContrast(
     }
   }
 
-  // Promote violations
-  if (violationNodes.length > 0) {
-    const existing = clone.violations.find((r) => r.id === 'color-contrast');
-    if (existing) {
-      existing.nodes.push(...violationNodes);
-    } else {
-      clone.violations.push({
-        ...ruleShell(ccRule),
-        nodes: violationNodes,
-      });
-    }
-  }
-
-  // Promote passes
-  if (passNodes.length > 0) {
-    const existing = clone.passes.find((r) => r.id === 'color-contrast');
-    if (existing) {
-      existing.nodes.push(...passNodes);
-    } else {
-      clone.passes.push({
-        ...ruleShell(ccRule),
-        nodes: passNodes,
-      });
-    }
-  }
-
-  // Update or remove the incomplete entry
-  if (incompleteNodes.length > 0) {
-    ccRule.nodes = incompleteNodes;
-  } else {
-    clone.incomplete.splice(ccIndex, 1);
-  }
+  applyPromotions(clone, ccIndex, ccRule, {
+    passNodes,
+    violationNodes,
+    incompleteNodes,
+  });
 
   return clone;
-}
-
-/**
- * Create a rule shell (all metadata, no nodes) from an existing rule.
- */
-function ruleShell(rule: AxeRule): AxeRule {
-  return {
-    id: rule.id,
-    impact: rule.impact,
-    tags: [...rule.tags],
-    description: rule.description,
-    help: rule.help,
-    helpUrl: rule.helpUrl,
-    nodes: [],
-  };
 }

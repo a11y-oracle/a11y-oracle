@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scrollable Region Tests</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .scroll-box { width: 300px; height: 100px; overflow: auto; border: 1px solid #ccc; padding: 10px; margin: 20px 0; }
+    .not-scrollable { width: 300px; height: 200px; overflow: auto; border: 1px solid #ccc; padding: 10px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Scrollable Region Tests</h1>
+
+    <section>
+      <h2>Scrollable with Focusable Children (Pass)</h2>
+      <div class="scroll-box" id="scroll-focusable">
+        <p>Scrollable content with a focusable link inside.</p>
+        <p>More text to ensure scrolling is needed.</p>
+        <p>Even more text.</p>
+        <p>And more...</p>
+        <a href="#" id="inner-link">Inner Link</a>
+        <p>Content after the link.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Scrollable with tabindex (Pass)</h2>
+      <div class="scroll-box" id="scroll-tabindex" tabindex="0">
+        <p>This scrollable region has tabindex="0".</p>
+        <p>More text to fill the container.</p>
+        <p>Even more text.</p>
+        <p>And more...</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Scrollable without Focusable Children (Violation)</h2>
+      <div class="scroll-box" id="scroll-no-focus">
+        <p>This scrollable region has no focusable children.</p>
+        <p>Only static text content.</p>
+        <p>More text to ensure scrolling is needed.</p>
+        <p>Even more text.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>Not Actually Scrollable (Pass)</h2>
+      <div class="not-scrollable" id="not-scrollable">
+        <p>Short content.</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

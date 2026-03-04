@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Target Size Tests</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .test-area { margin: 40px 0; }
+    #btn-large { width: 48px; height: 48px; }
+    #btn-minimum { width: 24px; height: 24px; padding: 0; }
+    #btn-small-spaced { width: 16px; height: 16px; padding: 0; margin: 30px; }
+    .tight-cluster button { width: 16px; height: 16px; padding: 0; margin: 2px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Target Size Tests</h1>
+
+    <section class="test-area">
+      <h2>Large Button (Pass)</h2>
+      <button id="btn-large">OK</button>
+    </section>
+
+    <section class="test-area">
+      <h2>Minimum Size 24x24 (Pass)</h2>
+      <button id="btn-minimum">X</button>
+    </section>
+
+    <section class="test-area">
+      <h2>Small Button with Spacing (Pass)</h2>
+      <button id="btn-small-spaced">+</button>
+    </section>
+
+    <section class="test-area">
+      <h2>Tight Button Cluster (Violation)</h2>
+      <div class="tight-cluster">
+        <button id="btn-tight-1">1</button>
+        <button id="btn-tight-2">2</button>
+        <button id="btn-tight-3">3</button>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

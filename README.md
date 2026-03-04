@@ -25,7 +25,7 @@ Beyond speech, A11y-Oracle also provides **unified accessibility state** that co
 
 ## Architecture
 
-A11y-Oracle is structured as an Nx monorepo with six publishable packages:
+A11y-Oracle is structured as an Nx monorepo with nine publishable packages:
 
 ```
 a11y-oracle/
@@ -33,6 +33,9 @@ a11y-oracle/
     core-engine/          @a11y-oracle/core-engine
     keyboard-engine/      @a11y-oracle/keyboard-engine
     focus-analyzer/       @a11y-oracle/focus-analyzer
+    visual-engine/        @a11y-oracle/visual-engine
+    axe-bridge/           @a11y-oracle/axe-bridge
+    cdp-types/            @a11y-oracle/cdp-types
     audit-formatter/      @a11y-oracle/audit-formatter
     playwright-plugin/    @a11y-oracle/playwright-plugin
     cypress-plugin/       @a11y-oracle/cypress-plugin
@@ -45,17 +48,23 @@ a11y-oracle/
 ### Dependency Graph
 
 ```
-keyboard-engine        (standalone — CDP key dispatch + focused element)
+cdp-types              (standalone — CDPSessionLike interface)
+keyboard-engine   ──→  cdp-types
 focus-analyzer    ──→  keyboard-engine
 core-engine       ──→  keyboard-engine + focus-analyzer
+visual-engine     ──→  focus-analyzer + cdp-types
+axe-bridge        ──→  visual-engine + focus-analyzer + keyboard-engine + cdp-types
 audit-formatter   ──→  core-engine + focus-analyzer (types only)
 playwright-plugin ──→  core-engine
 cypress-plugin    ──→  core-engine + keyboard-engine + audit-formatter
 ```
 
+- **`@a11y-oracle/cdp-types`** — Shared `CDPSessionLike` interface for framework-agnostic CDP access (Playwright, Puppeteer, Cypress).
 - **`@a11y-oracle/core-engine`** — Framework-agnostic speech engine and unified `A11yOrchestrator`. Depends only on a `CDPSessionLike` interface.
 - **`@a11y-oracle/keyboard-engine`** — Native CDP keyboard dispatch with modifier key support and focused element introspection.
 - **`@a11y-oracle/focus-analyzer`** — Focus indicator CSS analysis (WCAG 2.4.12), tab order extraction, and keyboard trap detection (WCAG 2.1.2).
+- **`@a11y-oracle/visual-engine`** — Visual pixel analysis engine for color contrast resolution: CSS halo heuristic detection, CDP screenshot capture, and pixel-level luminance analysis.
+- **`@a11y-oracle/axe-bridge`** — Axe-core result post-processor that resolves 10 "incomplete" rules using visual analysis, keyboard interaction, and CDP inspection.
 - **`@a11y-oracle/audit-formatter`** — Converts findings to axe-core-compatible `OracleIssue` objects with WCAG rule metadata. Pure functions, no CDP dependency.
 - **`@a11y-oracle/playwright-plugin`** — Playwright test fixture wrapping the core engine.
 - **`@a11y-oracle/cypress-plugin`** — Cypress custom commands with iframe-aware CDP routing and issue reporting.
@@ -256,40 +265,49 @@ This is an Nx monorepo. Common tasks:
 
 ```bash
 # Build all libraries
-npx nx run-many --targets=build
+npm exec nx run-many -- --targets=build
 
-# Run all unit tests (280+ tests)
-npx nx run-many --targets=test
+# Run all unit tests (431 tests across 6 packages)
+npm exec nx run-many -- --targets=test
 
 # Run core engine unit tests (129 tests)
-npx nx test core-engine
+npm exec nx test core-engine
 
 # Run keyboard engine unit tests (17 tests)
-npx nx test keyboard-engine
+npm exec nx test keyboard-engine
 
 # Run focus analyzer unit tests (56 tests)
-npx nx test focus-analyzer
+npm exec nx test focus-analyzer
 
-# Run audit formatter unit tests (83 tests)
-npx nx test audit-formatter
+# Run visual engine unit tests (44 tests)
+npm exec nx test visual-engine
 
-# Run Playwright E2E tests (23 tests)
-npx nx e2e e2e-tests
+# Run audit formatter unit tests (115 tests)
+npm exec nx test audit-formatter
 
-# Run Cypress E2E tests (20 tests)
-npx nx e2e cypress-e2e
+# Run axe-bridge unit tests (70 tests)
+npm exec nx test axe-bridge
+
+# Run Playwright E2E tests (53 tests)
+npm exec nx e2e e2e-tests
+
+# Run Cypress E2E tests (51 tests)
+npm exec nx e2e cypress-e2e
 
 # Visualize project dependency graph
-npx nx graph
+npm exec nx graph
 ```
 
 ## Packages
 
 | Package | Description | Docs |
 |---------|-------------|------|
+| [`@a11y-oracle/cdp-types`](libs/cdp-types) | Shared `CDPSessionLike` interface for framework-agnostic CDP access | — |
 | [`@a11y-oracle/core-engine`](libs/core-engine) | Framework-agnostic speech engine and unified orchestrator | [README](libs/core-engine/README.md) |
 | [`@a11y-oracle/keyboard-engine`](libs/keyboard-engine) | CDP keyboard dispatch with modifier support | [README](libs/keyboard-engine/README.md) |
 | [`@a11y-oracle/focus-analyzer`](libs/focus-analyzer) | Focus indicator analysis and keyboard trap detection | [README](libs/focus-analyzer/README.md) |
+| [`@a11y-oracle/visual-engine`](libs/visual-engine) | Visual pixel analysis for color contrast resolution | [README](libs/visual-engine/README.md) |
+| [`@a11y-oracle/axe-bridge`](libs/axe-bridge) | Axe-core incomplete rule resolver (10 rules) | [README](libs/axe-bridge/README.md) |
 | [`@a11y-oracle/audit-formatter`](libs/audit-formatter) | Axe-compatible issue formatting and WCAG audit rules | [README](libs/audit-formatter/README.md) |
 | [`@a11y-oracle/playwright-plugin`](libs/playwright-plugin) | Playwright test fixture and wrapper | [README](libs/playwright-plugin/README.md) |
 | [`@a11y-oracle/cypress-plugin`](libs/cypress-plugin) | Cypress custom commands | [README](libs/cypress-plugin/README.md) |

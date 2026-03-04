@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Identical Links Same Purpose Tests</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <main>
+    <h1>Identical Links Same Purpose Tests</h1>
+
+    <!-- Same destination (different URL formats) -->
+    <section id="same-dest">
+      <h2>Same Destination Links</h2>
+      <p>These "Read More" links all point to the same page:</p>
+      <ul>
+        <li><a href="/about" id="link-same-1">Read More</a></li>
+        <li><a href="/about?utm=test" id="link-same-2">Read More</a></li>
+        <li><a href="/about#section" id="link-same-3">Read More</a></li>
+        <li><a href="/about/" id="link-same-4">Read More</a></li>
+      </ul>
+    </section>
+
+    <!-- Different destinations -->
+    <section id="diff-dest">
+      <h2>Different Destination Links</h2>
+      <p>These "Learn More" links point to different pages:</p>
+      <ul>
+        <li><a href="/products" id="link-diff-1">Learn More</a></li>
+        <li><a href="/services" id="link-diff-2">Learn More</a></li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

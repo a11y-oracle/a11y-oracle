@@ -16,6 +16,12 @@
       "path": "../cdp-types/tsconfig.lib.json"
     },
     {
+      "path": "../focus-analyzer/tsconfig.lib.json"
+    },
+    {
+      "path": "../keyboard-engine/tsconfig.lib.json"
+    },
+    {
       "path": "../visual-engine/tsconfig.lib.json"
     }
   ]

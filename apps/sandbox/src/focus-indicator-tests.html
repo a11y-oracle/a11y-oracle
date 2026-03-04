@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focus Indicator Tests</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+    #btn-outline { outline: 2px solid blue; outline-offset: 2px; }
+    /*
+     * Focus styles use both :focus pseudo-class AND .focused class.
+     * The :focus pseudo-class works in direct CDP sessions (Playwright).
+     * The .focused class is toggled via JS focus/blur events and works
+     * even when the page window is inactive (e.g. Cypress AUT iframe).
+     */
+    #btn-outline:focus, #btn-outline.focused { outline: 3px solid #0055ff; }
+    #btn-no-indicator { outline: none; border: 1px solid #ccc; background: #eee; }
+    #btn-no-indicator:focus, #btn-no-indicator.focused { outline: none; }
+    #btn-box-shadow:focus, #btn-box-shadow.focused { box-shadow: 0 0 0 3px #0055ff; background-color: #cce0ff; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Focus Indicator Tests</h1>
+
+    <section>
+      <h2>With Outline (Pass)</h2>
+      <button id="btn-outline">Outlined Button</button>
+    </section>
+
+    <section>
+      <h2>No Focus Indicator (Violation)</h2>
+      <button id="btn-no-indicator">No Indicator</button>
+    </section>
+
+    <section>
+      <h2>Box Shadow Indicator (Pass)</h2>
+      <button id="btn-box-shadow">Shadow Button</button>
+    </section>
+  </main>
+
+  <script>
+    // Toggle .focused class on focus/blur events.
+    // This ensures focus indicator styles render even when the page
+    // window doesn't have actual focus (e.g. in an iframe context).
+    document.querySelectorAll('button').forEach(function(btn) {
+      btn.addEventListener('focus', function() { btn.classList.add('focused'); });
+      btn.addEventListener('blur', function() { btn.classList.remove('focused'); });
+    });
+  </script>
+</body>
+</html>

@@ -125,28 +125,48 @@ See the [@a11y-oracle/audit-formatter README](../libs/audit-formatter/README.md)
 
 ---
 
-## Resolving Incomplete Color Contrast
+## Resolving Incomplete axe-core Findings
 
-axe-core flags text over gradients, background images, and complex CSS as "incomplete" because it cannot determine the actual background color from CSS alone. The `@a11y-oracle/axe-bridge` package resolves these warnings using visual analysis.
+axe-core marks rules as "incomplete" (Needs Review) when they require state changes, interaction, or spatial awareness that static DOM analysis cannot perform. The `@a11y-oracle/axe-bridge` package resolves 10 incomplete rules automatically using visual analysis, keyboard interaction, and CDP inspection.
 
-### How It Works
+### Quick Start
 
-Call `resolveIncompleteContrast()` immediately after `axe.run()` while the page is still live and the CDP session is available:
+Call `resolveAllIncomplete()` immediately after `axe.run()` while the page is still live and the CDP session is available:
 
 ```typescript
-import { resolveIncompleteContrast } from '@a11y-oracle/axe-bridge';
+import { resolveAllIncomplete } from '@a11y-oracle/axe-bridge';
 
 // Run axe-core
 const axeResults = await axe.run(document);
 
-// Resolve incomplete color-contrast warnings
-const resolved = await resolveIncompleteContrast(cdpSession, axeResults);
+// Resolve all incomplete findings
+const resolved = await resolveAllIncomplete(cdpSession, axeResults);
 
 // Assert on resolved results
 expect(resolved.violations).toHaveLength(0);
+expect(resolved.incomplete).toHaveLength(0);
 ```
 
-The bridge analyzes each incomplete `color-contrast` node through a two-stage pipeline:
+### Resolved Rules
+
+The bridge resolves the following 10 rules:
+
+| Rule ID | WCAG SC | Technique |
+|---------|---------|-----------|
+| `color-contrast` | 1.4.3 | CSS halo heuristic + pixel-level screenshot analysis |
+| `identical-links-same-purpose` | 2.4.4 | URL normalization and comparison |
+| `link-in-text-block` | 1.4.1 | Default-state computed style checks |
+| `target-size` | 2.5.8 | Bounding box measurements + spacing |
+| `scrollable-region-focusable` | 2.1.1 | Scroll height + focusable child traversal |
+| `skip-link` | 2.4.1 | Tab-focus visibility verification |
+| `aria-hidden-focus` | 4.1.2 | Full keyboard Tab traversal |
+| `focus-indicator` | 2.4.7 | Before/after screenshot pixel diff |
+| `content-on-hover` | 1.4.13 | Hover + dismiss interaction tests |
+| `frame-tested` | N/A | Cross-origin iframe axe-core injection |
+
+### Color Contrast Details
+
+For the `color-contrast` resolver specifically, the bridge analyzes each node through a two-stage pipeline:
 
 1. **CSS Halo Check** (fast path) — Detects `-webkit-text-stroke` or multi-directional `text-shadow` that guarantees text readability without needing a screenshot.
 
