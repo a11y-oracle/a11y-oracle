@@ -112,4 +112,4 @@ For each incomplete `color-contrast` node, the bridge:
 ## Dependencies
 
 - **`@a11y-oracle/visual-engine`** — Visual analysis engine (halo detection, pixel analysis, CDP capture)
-- **`@a11y-oracle/keyboard-engine`** — `CDPSessionLike` interface
+- **`@a11y-oracle/cdp-types`** — `CDPSessionLike` interface

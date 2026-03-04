@@ -81,16 +81,6 @@ Returns `null` if no interactive element has focus (e.g., `document.body` or `do
 
 ### Types
 
-#### `CDPSessionLike`
-
-Minimal interface for a CDP session. Defined locally (not imported from core-engine) to avoid circular dependencies. Structurally identical to the core-engine version.
-
-```typescript
-interface CDPSessionLike {
-  send(method: string, params?: Record<string, unknown>): Promise<unknown>;
-}
-```
-
 #### `KeyDefinition`
 
 CDP keyboard event parameters for a single key:
@@ -139,7 +129,6 @@ interface FocusedElementInfo {
 export { KeyboardEngine } from '@a11y-oracle/keyboard-engine';
 export { KEY_DEFINITIONS } from '@a11y-oracle/keyboard-engine';
 export type {
-  CDPSessionLike,
   KeyDefinition,
   ModifierKeys,
   FocusedElementInfo,

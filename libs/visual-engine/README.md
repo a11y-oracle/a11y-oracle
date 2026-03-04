@@ -152,5 +152,5 @@ import type {
 ## Dependencies
 
 - **`@a11y-oracle/focus-analyzer`** — Reuses `relativeLuminance()`, `contrastRatio()`, and `parseColor()` for WCAG-compliant color math
-- **`@a11y-oracle/keyboard-engine`** — `CDPSessionLike` interface for framework-agnostic CDP access
+- **`@a11y-oracle/cdp-types`** — `CDPSessionLike` interface for framework-agnostic CDP access
 - **`pngjs`** — Pure JavaScript PNG decoder (no native dependencies)
