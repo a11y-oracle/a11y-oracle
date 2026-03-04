@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { KeyboardEngine } from './keyboard-engine.js';
-import type { CDPSessionLike } from './types.js';
+import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
 
 /**
  * Create a mock CDP session that records all `send()` calls.

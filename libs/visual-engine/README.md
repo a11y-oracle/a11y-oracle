@@ -18,7 +18,7 @@ The coordinator class runs the full pipeline for a single element:
 
 ```typescript
 import { VisualContrastAnalyzer } from '@a11y-oracle/visual-engine';
-import type { CDPSessionLike } from '@a11y-oracle/keyboard-engine';
+import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
 
 const analyzer = new VisualContrastAnalyzer(cdpSession);
 

@@ -12,6 +12,7 @@
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.spec.ts", "src/**/*.test.ts"],
   "references": [
+    { "path": "../cdp-types/tsconfig.lib.json" },
     { "path": "../keyboard-engine/tsconfig.lib.json" },
     { "path": "../focus-analyzer/tsconfig.lib.json" }
   ]

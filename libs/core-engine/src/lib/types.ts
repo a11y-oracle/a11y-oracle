@@ -9,27 +9,16 @@
  */
 
 import type { Protocol } from 'devtools-protocol';
+import type { CDPSessionLike as BaseCDPSessionLike } from '@a11y-oracle/cdp-types';
 
 /**
- * Minimal interface for a Chrome DevTools Protocol session.
+ * Extended CDP session interface with typed Accessibility domain methods.
  *
- * This is the abstraction boundary between the core engine and framework
- * plugins. The engine never imports Playwright or Cypress — it only
- * depends on this interface.
- *
- * Both Playwright's `CDPSession` and `chrome-remote-interface` clients
- * are compatible with this interface.
- *
- * @example
- * ```typescript
- * // Playwright
- * const cdp: CDPSessionLike = await page.context().newCDPSession(page);
- *
- * // chrome-remote-interface
- * const cdp: CDPSessionLike = await CDP({ port: 9222 });
- * ```
+ * Extends the base {@link BaseCDPSessionLike} from `@a11y-oracle/cdp-types`
+ * with specific overloads for the Accessibility CDP domain used by the
+ * speech engine and orchestrator.
  */
-export interface CDPSessionLike {
+export interface CDPSessionLike extends BaseCDPSessionLike {
   send(
     method: 'Accessibility.enable'
   ): Promise<void>;

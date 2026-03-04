@@ -6,7 +6,7 @@
  * backgrounds after temporarily making text invisible.
  */
 
-import type { CDPSessionLike } from '@a11y-oracle/keyboard-engine';
+import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
 import { parseColor } from '@a11y-oracle/focus-analyzer';
 import type { RGBColor } from '@a11y-oracle/focus-analyzer';
 import type { ElementComputedStyles } from './types.js';

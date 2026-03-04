@@ -18,6 +18,7 @@
     "!**/*.tsbuildinfo"
   ],
   "dependencies": {
+    "@a11y-oracle/cdp-types": "0.0.1",
     "@a11y-oracle/visual-engine": "0.0.1",
     "tslib": "^2.3.0"
   }

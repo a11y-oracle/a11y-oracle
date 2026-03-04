@@ -1,5 +1,5 @@
 {
-  "name": "@a11y-oracle/keyboard-engine",
+  "name": "@a11y-oracle/cdp-types",
   "version": "0.0.1",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,8 +18,6 @@
     "!**/*.tsbuildinfo"
   ],
   "dependencies": {
-    "@a11y-oracle/cdp-types": "0.0.1",
-    "devtools-protocol": "^0.0.1591961",
     "tslib": "^2.3.0"
   }
 }

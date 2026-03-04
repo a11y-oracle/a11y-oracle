@@ -5,7 +5,7 @@
  * halo heuristic → dynamic content check → pixel analysis → Safe Assessment Matrix.
  */
 
-import type { CDPSessionLike } from '@a11y-oracle/keyboard-engine';
+import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
 import type { ContrastAnalysisResult, HaloResult } from './types.js';
 import { analyzeHalo } from './halo-detector.js';
 import { extractPixelLuminance } from './pixel-analysis.js';

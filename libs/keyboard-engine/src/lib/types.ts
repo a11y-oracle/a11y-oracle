@@ -2,21 +2,7 @@
  * @module types
  *
  * Type definitions for the keyboard engine.
- *
- * {@link CDPSessionLike} is defined locally to avoid a circular dependency
- * with `@a11y-oracle/core-engine`. The two interfaces are structurally
- * identical, so TypeScript treats them as compatible.
  */
-
-/**
- * Minimal interface for a Chrome DevTools Protocol session.
- *
- * Structurally identical to the `CDPSessionLike` in `@a11y-oracle/core-engine`.
- * Defined here locally to avoid a circular dependency.
- */
-export interface CDPSessionLike {
-  send(method: string, params?: Record<string, unknown>): Promise<unknown>;
-}
 
 /**
  * CDP keyboard event parameter definition for a single key.

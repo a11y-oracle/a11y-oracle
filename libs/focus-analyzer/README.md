@@ -48,7 +48,7 @@ if (result.isTrapped) {
 
 Create a new focus analyzer. Internally creates a `KeyboardEngine` for trap detection.
 
-- `cdp` — Any CDP-compatible session (uses the `CDPSessionLike` interface from `@a11y-oracle/keyboard-engine`).
+- `cdp` — Any CDP-compatible session (uses the `CDPSessionLike` interface from `@a11y-oracle/cdp-types`).
 
 #### `getFocusIndicator(): Promise<FocusIndicator>`
 

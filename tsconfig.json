@@ -4,6 +4,9 @@
   "files": [],
   "references": [
     {
+      "path": "./libs/cdp-types"
+    },
+    {
       "path": "./libs/core-engine"
     },
     {

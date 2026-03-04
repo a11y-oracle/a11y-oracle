@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { PNG } from 'pngjs';
 import { resolveIncompleteContrast } from './axe-bridge.js';
-import type { CDPSessionLike } from '@a11y-oracle/keyboard-engine';
+import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
 import type { AxeResults, AxeNode, AxeRule } from './types.js';
 
 /** Create a synthetic PNG buffer of uniform color. */

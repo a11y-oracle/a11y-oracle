@@ -14,7 +14,7 @@
  * ```
  */
 
-import type { CDPSessionLike } from '@a11y-oracle/keyboard-engine';
+import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
 import { KeyboardEngine } from '@a11y-oracle/keyboard-engine';
 import type {
   FocusIndicator,

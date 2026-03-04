@@ -186,6 +186,16 @@ export class A11yOracle {
   }
 
   /**
+   * Alias for {@link getA11yState} that satisfies the
+   * {@link OrchestratorLike} interface from `@a11y-oracle/audit-formatter`.
+   *
+   * @returns Unified accessibility state snapshot.
+   */
+  async getState(): Promise<A11yState> {
+    return this.getA11yState();
+  }
+
+  /**
    * Extract all tabbable elements in DOM tab order.
    *
    * @returns Report with sorted tab order entries and total count.

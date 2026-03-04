@@ -16,7 +16,8 @@
  * ```
  */
 
-import type { CDPSessionLike, ModifierKeys, FocusedElementInfo } from './types.js';
+import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
+import type { ModifierKeys, FocusedElementInfo } from './types.js';
 import { KEY_DEFINITIONS } from './key-map.js';
 
 /**

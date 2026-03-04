@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { FocusAnalyzer } from './focus-analyzer.js';
-import type { CDPSessionLike } from '@a11y-oracle/keyboard-engine';
+import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
 
 /**
  * Create a mock CDP session for FocusAnalyzer testing.

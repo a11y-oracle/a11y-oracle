@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { PNG } from 'pngjs';
 import { VisualContrastAnalyzer } from './visual-analyzer.js';
-import type { CDPSessionLike } from '@a11y-oracle/keyboard-engine';
+import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
 
 /** Create a synthetic PNG buffer from uniform color. */
 function createUniformPng(

@@ -24,7 +24,6 @@
 export { KeyboardEngine } from './lib/keyboard-engine.js';
 export { KEY_DEFINITIONS } from './lib/key-map.js';
 export type {
-  CDPSessionLike,
   KeyDefinition,
   ModifierKeys,
   FocusedElementInfo,

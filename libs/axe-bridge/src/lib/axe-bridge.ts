@@ -6,7 +6,7 @@
  * halo heuristics.
  */
 
-import type { CDPSessionLike } from '@a11y-oracle/keyboard-engine';
+import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
 import { VisualContrastAnalyzer } from '@a11y-oracle/visual-engine';
 import type {
   AxeResults,
