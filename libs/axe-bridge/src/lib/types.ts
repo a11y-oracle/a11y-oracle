@@ -73,10 +73,50 @@ export interface AxeResults {
   [key: string]: unknown;
 }
 
-/** Options for the incomplete contrast resolution pipeline. */
+/**
+ * WCAG conformance level.
+ *
+ * Structurally compatible with the `WcagLevel` type in
+ * `@a11y-oracle/audit-formatter`. Defined locally to avoid an
+ * unnecessary cross-library dependency.
+ *
+ * Each AA level includes the contrast requirement (SC 1.4.3).
+ * Level A has no contrast SC.
+ */
+export type WcagLevel =
+  | 'wcag2a'    // WCAG 2.0 Level A
+  | 'wcag2aa'   // WCAG 2.0 Level AA
+  | 'wcag21a'   // WCAG 2.1 Level A
+  | 'wcag21aa'  // WCAG 2.1 Level AA
+  | 'wcag22a'   // WCAG 2.2 Level A
+  | 'wcag22aa'; // WCAG 2.2 Level AA (default)
+
+/**
+ * Contrast ratio thresholds for a WCAG conformance level.
+ */
+export interface ContrastThresholds {
+  /** Minimum contrast ratio for normal text (e.g. 4.5 for AA). */
+  normalText: number;
+  /** Minimum contrast ratio for large text (e.g. 3.0 for AA). */
+  largeText: number;
+}
+
+/**
+ * Options for the incomplete contrast resolution pipeline.
+ *
+ * When `wcagLevel` is provided, thresholds are derived automatically.
+ * Explicit `threshold` / `largeTextThreshold` values override the
+ * level-derived values.
+ */
 export interface ContrastResolutionOptions {
-  /** Minimum contrast ratio for normal text. Default: 4.5 (WCAG AA). */
+  /**
+   * WCAG conformance level. When set, contrast thresholds are derived
+   * from the level (e.g. AA → 4.5 / 3.0). Explicit threshold values
+   * take precedence. Default: `'wcag22aa'`.
+   */
+  wcagLevel?: WcagLevel;
+  /** Minimum contrast ratio for normal text. Overrides wcagLevel. */
   threshold?: number;
-  /** Minimum contrast ratio for large text. Default: 3.0 (WCAG AA). */
+  /** Minimum contrast ratio for large text. Overrides wcagLevel. */
   largeTextThreshold?: number;
 }

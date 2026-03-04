@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { encode } from 'fast-png';
 import { resolveIncompleteContrast } from './axe-bridge.js';
+import { getContrastThresholds } from './wcag-thresholds.js';
 import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
-import type { AxeResults, AxeNode, AxeRule } from './types.js';
+import type { AxeResults, AxeNode, AxeRule, WcagLevel } from './types.js';
 
 /** Create a synthetic PNG buffer of uniform color. */
 function createUniformPng(r: number, g: number, b: number): Uint8Array {
@@ -316,5 +317,104 @@ describe('resolveIncompleteContrast', () => {
     const cleaned = await resolveIncompleteContrast(cdp, results);
     expect(cleaned.violations).toHaveLength(1);
     expect(cleaned.violations[0].nodes).toHaveLength(2);
+  });
+
+  it('skips contrast resolution when wcagLevel is A (no contrast SC)', async () => {
+    const cdp = buildMockCDP({});
+    const results = makeAxeResults({
+      incomplete: [makeColorContrastRule([makeNode('#el')])],
+    });
+
+    const cleaned = await resolveIncompleteContrast(cdp, results, {
+      wcagLevel: 'wcag22a',
+    });
+
+    // Should leave incomplete untouched — Level A has no contrast requirement
+    expect(cleaned.incomplete).toHaveLength(1);
+    expect(cleaned.incomplete[0].id).toBe('color-contrast');
+    expect(cleaned.passes).toHaveLength(0);
+    expect(cleaned.violations).toHaveLength(0);
+  });
+
+  it('derives AA thresholds from wcagLevel when explicit thresholds are not set', async () => {
+    // Gray text (~3.84:1) on white — fails 4.5 but passes 3.0
+    const cdp = buildMockCDP({
+      textColors: { '#el': 'rgb(130, 130, 130)' },
+      backgrounds: { '#el': { r: 255, g: 255, b: 255 } },
+    });
+
+    const results = makeAxeResults({
+      incomplete: [makeColorContrastRule([makeNode('#el')])],
+    });
+
+    // With default AA level (wcag22aa), 4.5 threshold → violation
+    const cleanedAA = await resolveIncompleteContrast(cdp, results, {
+      wcagLevel: 'wcag22aa',
+    });
+    expect(cleanedAA.violations).toHaveLength(1);
+    expect(cleanedAA.passes).toHaveLength(0);
+  });
+
+  it('explicit threshold overrides wcagLevel-derived threshold', async () => {
+    // Gray text (~3.84:1) on white — fails 4.5 but passes 3.0
+    const cdp = buildMockCDP({
+      textColors: { '#el': 'rgb(130, 130, 130)' },
+      backgrounds: { '#el': { r: 255, g: 255, b: 255 } },
+    });
+
+    const results = makeAxeResults({
+      incomplete: [makeColorContrastRule([makeNode('#el')])],
+    });
+
+    // wcagLevel says AA (4.5) but explicit threshold says 3.0 → pass
+    const cleaned = await resolveIncompleteContrast(cdp, results, {
+      wcagLevel: 'wcag22aa',
+      threshold: 3.0,
+      largeTextThreshold: 2.0,
+    });
+    expect(cleaned.passes).toHaveLength(1);
+    expect(cleaned.violations).toHaveLength(0);
+  });
+
+  it('explicit threshold forces resolution even when wcagLevel is A', async () => {
+    const cdp = buildMockCDP({
+      textColors: { '#el': 'rgb(0, 0, 0)' },
+      backgrounds: { '#el': { r: 255, g: 255, b: 255 } },
+    });
+
+    const results = makeAxeResults({
+      incomplete: [makeColorContrastRule([makeNode('#el')])],
+    });
+
+    // Level A would skip, but explicit threshold forces resolution
+    const cleaned = await resolveIncompleteContrast(cdp, results, {
+      wcagLevel: 'wcag22a',
+      threshold: 4.5,
+    });
+    expect(cleaned.passes).toHaveLength(1);
+    expect(cleaned.incomplete).toHaveLength(0);
+  });
+});
+
+describe('getContrastThresholds', () => {
+  it('returns AA thresholds for all AA levels', () => {
+    const aaLevels: WcagLevel[] = ['wcag2aa', 'wcag21aa', 'wcag22aa'];
+    for (const level of aaLevels) {
+      const thresholds = getContrastThresholds(level);
+      expect(thresholds).toEqual({ normalText: 4.5, largeText: 3.0 });
+    }
+  });
+
+  it('returns null for all A levels (no contrast requirement)', () => {
+    const aLevels: WcagLevel[] = ['wcag2a', 'wcag21a', 'wcag22a'];
+    for (const level of aLevels) {
+      const thresholds = getContrastThresholds(level);
+      expect(thresholds).toBeNull();
+    }
+  });
+
+  it('defaults to wcag22aa when no level is specified', () => {
+    const thresholds = getContrastThresholds();
+    expect(thresholds).toEqual({ normalText: 4.5, largeText: 3.0 });
   });
 });

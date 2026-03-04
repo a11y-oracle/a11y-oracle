@@ -9,8 +9,11 @@
  */
 
 export { resolveIncompleteContrast } from './lib/axe-bridge.js';
+export { getContrastThresholds } from './lib/wcag-thresholds.js';
 export type {
   ContrastResolutionOptions,
+  ContrastThresholds,
+  WcagLevel,
   AxeResults,
   AxeRule,
   AxeNode,

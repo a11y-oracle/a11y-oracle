@@ -14,10 +14,7 @@ import type {
   AxeNode,
   ContrastResolutionOptions,
 } from './types.js';
-
-/** Default WCAG AA thresholds. */
-const DEFAULT_THRESHOLD = 4.5;
-const DEFAULT_LARGE_TEXT_THRESHOLD = 3.0;
+import { getContrastThresholds } from './wcag-thresholds.js';
 
 /**
  * Determine the effective contrast threshold for an axe node.
@@ -98,9 +95,19 @@ export async function resolveIncompleteContrast(
   options?: ContrastResolutionOptions,
 ): Promise<AxeResults> {
   const clone = cloneResults(axeResults);
-  const threshold = options?.threshold ?? DEFAULT_THRESHOLD;
+
+  // Derive thresholds: explicit values > wcagLevel > default (wcag22aa)
+  const levelThresholds = getContrastThresholds(options?.wcagLevel);
+
+  // Level A has no contrast requirement — skip resolution entirely
+  if (!levelThresholds && !options?.threshold && !options?.largeTextThreshold) {
+    return clone;
+  }
+
+  const threshold =
+    options?.threshold ?? levelThresholds?.normalText ?? 4.5;
   const largeTextThreshold =
-    options?.largeTextThreshold ?? DEFAULT_LARGE_TEXT_THRESHOLD;
+    options?.largeTextThreshold ?? levelThresholds?.largeText ?? 3.0;
 
   // Find the color-contrast rule in incomplete results
   const ccIndex = clone.incomplete.findIndex(
