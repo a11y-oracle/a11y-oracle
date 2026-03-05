@@ -1,3 +1,14 @@
+## 1.1.1 (2026-03-05)
+
+### 🩹 Fixes
+
+- **visual-engine,axe-bridge:** scroll element into viewport before CDP screenshot ([2d8e536](https://github.com/a11y-oracle/a11y-oracle/commit/2d8e536))
+
+### ❤️ Thank You
+
+- Claude Opus 4.6
+- Preston Lamb @pjlamb12
+
 ## 1.1.0 (2026-03-05)
 
 ### 🩹 Fixes
