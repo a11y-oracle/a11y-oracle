@@ -1,3 +1,14 @@
+## 1.1.3 (2026-03-05)
+
+### 🩹 Fixes
+
+- **cypress-plugin:** translate iframe-relative screenshot coordinates to viewport ([097f1ee](https://github.com/a11y-oracle/a11y-oracle/commit/097f1ee))
+
+### ❤️ Thank You
+
+- Claude Opus 4.6
+- Preston Lamb @pjlamb12
+
 ## 1.1.2 (2026-03-05)
 
 ### 🩹 Fixes
