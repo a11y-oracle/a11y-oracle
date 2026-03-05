@@ -194,8 +194,8 @@ describe('VisualContrastAnalyzer', () => {
   });
 
   describe('pixel pipeline — split decision', () => {
-    it('returns incomplete when contrast passes one extreme but fails the other', async () => {
-      // White text on gradient (white→black)
+    it('returns incomplete when pixel distribution is genuinely ambiguous', async () => {
+      // White text on a 50/50 gradient (white→black) — half pass, half fail
       const cdp = buildMockCDP({
         captureInfo: {
           color: 'rgb(255, 255, 255)',
@@ -210,6 +210,84 @@ describe('VisualContrastAnalyzer', () => {
       const result = await analyzer.analyzeElement('#gradient-text');
       expect(result.category).toBe('incomplete');
       expect(result.reason).toContain('Split decision');
+    });
+  });
+
+  describe('pixel pipeline — distribution override', () => {
+    it('returns pass when 95%+ of pixels pass despite one extreme failing', async () => {
+      // White text on mostly-dark background with 1 light outlier pixel
+      // 19 black pixels (pass) + 1 white pixel (fail) = 95% pass
+      const data = new Uint8Array(20 * 1 * 4);
+      for (let i = 0; i < 20; i++) {
+        const offset = i * 4;
+        if (i < 19) {
+          // Black pixel — white text on black = ~21:1 (pass)
+          data[offset] = 0;
+          data[offset + 1] = 0;
+          data[offset + 2] = 0;
+        } else {
+          // White pixel — white text on white = ~1:1 (fail)
+          data[offset] = 255;
+          data[offset + 1] = 255;
+          data[offset + 2] = 255;
+        }
+        data[offset + 3] = 255;
+      }
+      const screenshot = encode({ width: 20, height: 1, data, channels: 4, depth: 8 });
+
+      const cdp = buildMockCDP({
+        captureInfo: {
+          color: 'rgb(255, 255, 255)',
+          x: 0,
+          y: 0,
+          width: 20,
+          height: 1,
+        },
+        screenshotBuffer: screenshot,
+      });
+      const analyzer = new VisualContrastAnalyzer(cdp);
+      const result = await analyzer.analyzeElement('#mostly-dark');
+      expect(result.category).toBe('pass');
+      expect(result.reason).toContain('pixel distribution');
+      expect(result.pixels!.passRatio).toBeGreaterThanOrEqual(0.95);
+    });
+
+    it('returns violation when 95%+ of pixels fail despite one extreme passing', async () => {
+      // White text on mostly-white background with 1 dark outlier pixel
+      // 19 white pixels (fail) + 1 black pixel (pass) = 5% pass
+      const data = new Uint8Array(20 * 1 * 4);
+      for (let i = 0; i < 20; i++) {
+        const offset = i * 4;
+        if (i < 19) {
+          // White pixel — white text on white = ~1:1 (fail)
+          data[offset] = 255;
+          data[offset + 1] = 255;
+          data[offset + 2] = 255;
+        } else {
+          // Black pixel — white text on black = ~21:1 (pass)
+          data[offset] = 0;
+          data[offset + 1] = 0;
+          data[offset + 2] = 0;
+        }
+        data[offset + 3] = 255;
+      }
+      const screenshot = encode({ width: 20, height: 1, data, channels: 4, depth: 8 });
+
+      const cdp = buildMockCDP({
+        captureInfo: {
+          color: 'rgb(255, 255, 255)',
+          x: 0,
+          y: 0,
+          width: 20,
+          height: 1,
+        },
+        screenshotBuffer: screenshot,
+      });
+      const analyzer = new VisualContrastAnalyzer(cdp);
+      const result = await analyzer.analyzeElement('#mostly-white');
+      expect(result.category).toBe('violation');
+      expect(result.reason).toContain('pixel distribution');
+      expect(result.pixels!.passRatio).toBeLessThanOrEqual(0.05);
     });
   });
 

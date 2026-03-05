@@ -134,6 +134,7 @@ export async function resolveIncompleteContrast(
         violationNodes.push(node);
         break;
       case 'incomplete':
+        enrichNodeWithContrastData(node, result);
         incompleteNodes.push(node);
         break;
     }

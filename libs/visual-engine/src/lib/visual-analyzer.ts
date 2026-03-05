@@ -2,7 +2,7 @@
  * @module visual-analyzer
  *
  * Coordinator class that runs the full visual contrast analysis pipeline:
- * halo heuristic → dynamic content check → pixel analysis → Safe Assessment Matrix.
+ * halo heuristic -> dynamic content check -> pixel analysis -> Safe Assessment Matrix.
  */
 
 import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
@@ -17,6 +17,13 @@ import {
 
 /** Default WCAG AA contrast threshold for normal text. */
 const DEFAULT_THRESHOLD = 4.5;
+
+/**
+ * Minimum fraction of pixels that must agree for a distribution-based
+ * pass or violation decision. When the extremes disagree (split decision)
+ * but >= 95% of pixels pass (or fail), the distribution overrides.
+ */
+const PASS_RATIO_THRESHOLD = 0.95;
 
 const NO_HALO: HaloResult = {
   hasValidHalo: false,
@@ -123,8 +130,8 @@ export class VisualContrastAnalyzer {
       };
     }
 
-    // Step 5: Pixel-level luminance analysis
-    const pixels = extractPixelLuminance(capture.pngBuffer, capture.textColor);
+    // Step 5: Pixel-level luminance analysis (pass threshold for distribution)
+    const pixels = extractPixelLuminance(capture.pngBuffer, capture.textColor, threshold);
     if (!pixels) {
       return {
         selector,
@@ -162,13 +169,38 @@ export class VisualContrastAnalyzer {
       };
     }
 
+    // Split decision — extremes disagree. Use pixel distribution to decide.
+    if (pixels.passRatio != null) {
+      if (pixels.passRatio >= PASS_RATIO_THRESHOLD) {
+        return {
+          selector,
+          category: 'pass',
+          textColor: capture.textColor,
+          halo,
+          pixels,
+          reason: `Passes by pixel distribution (${(pixels.passRatio * 100).toFixed(1)}% of pixels pass, lightest: ${pixels.crAgainstLightest.toFixed(2)}, darkest: ${pixels.crAgainstDarkest.toFixed(2)})`,
+        };
+      }
+
+      if (pixels.passRatio <= 1 - PASS_RATIO_THRESHOLD) {
+        return {
+          selector,
+          category: 'violation',
+          textColor: capture.textColor,
+          halo,
+          pixels,
+          reason: `Fails by pixel distribution (${(pixels.passRatio * 100).toFixed(1)}% of pixels pass, lightest: ${pixels.crAgainstLightest.toFixed(2)}, darkest: ${pixels.crAgainstDarkest.toFixed(2)})`,
+        };
+      }
+    }
+
     return {
       selector,
       category: 'incomplete',
       textColor: capture.textColor,
       halo,
       pixels,
-      reason: `Split decision — passes one extreme but fails the other (lightest: ${pixels.crAgainstLightest.toFixed(2)}, darkest: ${pixels.crAgainstDarkest.toFixed(2)})`,
+      reason: `Split decision — passes one extreme but fails the other (lightest: ${pixels.crAgainstLightest.toFixed(2)}, darkest: ${pixels.crAgainstDarkest.toFixed(2)}${pixels.passRatio != null ? `, ${(pixels.passRatio * 100).toFixed(1)}% pass` : ''})`,
     };
   }
 }

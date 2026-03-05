@@ -50,6 +50,12 @@ export interface PixelAnalysisResult {
   crAgainstDarkest: number;
   /** Total opaque pixels analyzed. */
   pixelCount: number;
+  /**
+   * Fraction of opaque pixels whose contrast ratio against the text color
+   * meets or exceeds the threshold. Range: 0–1.
+   * null when threshold was not provided during analysis.
+   */
+  passRatio: number | null;
 }
 
 /** Computed CSS styles extracted from an element for halo analysis. */

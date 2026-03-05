@@ -117,6 +117,8 @@ describe('extractPixelLuminance', () => {
     // Black text on white bg: ~21:1
     expect(result!.crAgainstLightest).toBeCloseTo(21, 0);
     expect(result!.crAgainstDarkest).toBeCloseTo(21, 0);
+    // No threshold provided → passRatio is null
+    expect(result!.passRatio).toBeNull();
   });
 
   it('calculates contrast ratios for white text on gradient', () => {
@@ -128,6 +130,7 @@ describe('extractPixelLuminance', () => {
     expect(result!.crAgainstLightest).toBeCloseTo(1, 0);
     // White on black: ~21:1
     expect(result!.crAgainstDarkest).toBeCloseTo(21, 0);
+    expect(result!.passRatio).toBeNull();
   });
 
   it('returns null for all-transparent screenshot', () => {
@@ -145,5 +148,48 @@ describe('extractPixelLuminance', () => {
     // Black text on mid-gray: moderate contrast
     expect(result!.crAgainstLightest).toBeGreaterThan(4);
     expect(result!.crAgainstLightest).toBeLessThan(10);
+  });
+
+  describe('passRatio', () => {
+    it('returns 1.0 when all pixels pass threshold', () => {
+      const textColor: RGBColor = { r: 0, g: 0, b: 0, a: 1 };
+      const buf = createSyntheticPng([WHITE, WHITE, WHITE, WHITE], 2, 2);
+      const result = extractPixelLuminance(buf, textColor, 4.5);
+      expect(result).not.toBeNull();
+      expect(result!.passRatio).toBe(1.0);
+    });
+
+    it('returns 0.0 when no pixels pass threshold', () => {
+      // White text on white background — 1:1 contrast, fails any threshold
+      const textColor: RGBColor = { r: 255, g: 255, b: 255, a: 1 };
+      const buf = createSyntheticPng([WHITE, WHITE], 2, 1);
+      const result = extractPixelLuminance(buf, textColor, 4.5);
+      expect(result).not.toBeNull();
+      expect(result!.passRatio).toBe(0.0);
+    });
+
+    it('returns correct ratio for mixed background', () => {
+      // Black text on: 9 white pixels (pass ~21:1) + 1 light gray pixel
+      // The light gray might still pass 4.5 depending on exact color
+      const textColor: RGBColor = { r: 0, g: 0, b: 0, a: 1 };
+      const pixels = Array(9).fill(WHITE).concat([BLACK]);
+      const buf = createSyntheticPng(pixels, 10, 1);
+      const result = extractPixelLuminance(buf, textColor, 4.5);
+      expect(result).not.toBeNull();
+      // Black text on black pixel: ~1:1 (fails), on white: ~21:1 (passes)
+      // 9 of 10 pass = 0.9
+      expect(result!.passRatio).toBeCloseTo(0.9, 2);
+    });
+
+    it('skips transparent pixels in ratio calculation', () => {
+      const textColor: RGBColor = { r: 0, g: 0, b: 0, a: 1 };
+      const pixels = [WHITE, WHITE, TRANSPARENT, TRANSPARENT];
+      const buf = createSyntheticPng(pixels, 2, 2);
+      const result = extractPixelLuminance(buf, textColor, 4.5);
+      expect(result).not.toBeNull();
+      // Only 2 opaque pixels, both pass → 1.0
+      expect(result!.passRatio).toBe(1.0);
+      expect(result!.pixelCount).toBe(2);
+    });
   });
 });

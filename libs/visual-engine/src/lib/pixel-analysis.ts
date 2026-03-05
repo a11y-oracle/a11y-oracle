@@ -127,22 +127,78 @@ export function findLuminanceExtremes(
 }
 
 /**
+ * Count how many opaque pixels in an RGBA buffer meet or exceed a
+ * contrast threshold against a given text color.
+ *
+ * @param data - RGBA pixel data (4 bytes per pixel).
+ * @param totalPixels - Total pixel count (width * height).
+ * @param textColor - Foreground text color to check contrast against.
+ * @param threshold - WCAG contrast ratio threshold (e.g. 4.5 for AA).
+ * @returns Number of pixels whose contrast ratio >= threshold.
+ */
+function countPassingPixels(
+  data: Uint8Array,
+  totalPixels: number,
+  textColor: RGBColor,
+  threshold: number,
+): number {
+  const fgLum = relativeLuminance(textColor);
+  let passing = 0;
+
+  for (let i = 0; i < totalPixels; i++) {
+    const offset = i * 4;
+    const a = data[offset + 3];
+    if (a < 255) continue;
+
+    const r = data[offset];
+    const g = data[offset + 1];
+    const b = data[offset + 2];
+    const bgLum = relativeLuminance({ r, g, b, a: 1 });
+
+    // WCAG contrast ratio formula
+    const lighter = Math.max(fgLum, bgLum);
+    const darker = Math.min(fgLum, bgLum);
+    const cr = (lighter + 0.05) / (darker + 0.05);
+
+    if (cr >= threshold) {
+      passing++;
+    }
+  }
+
+  return passing;
+}
+
+/**
  * Decode a PNG screenshot and analyze pixel luminance against a text color.
  *
  * Computes contrast ratios of the text color against the lightest and
- * darkest background pixels found in the image.
+ * darkest background pixels found in the image, and optionally computes
+ * the fraction of pixels that pass a given contrast threshold.
  *
  * @param pngBuffer - PNG-encoded screenshot of the element background.
  * @param textColor - The foreground text color to check contrast against.
+ * @param threshold - Optional WCAG contrast threshold for passRatio calculation.
  * @returns Pixel analysis result, or null if no opaque pixels were found.
  */
 export function extractPixelLuminance(
   pngBuffer: Uint8Array,
   textColor: RGBColor,
+  threshold?: number,
 ): PixelAnalysisResult | null {
   const { width, height, data } = decodePng(pngBuffer);
   const extremes = findLuminanceExtremes(data, width, height);
   if (!extremes) return null;
+
+  let passRatio: number | null = null;
+  if (threshold != null && extremes.pixelCount > 0) {
+    const passing = countPassingPixels(
+      data,
+      width * height,
+      textColor,
+      threshold,
+    );
+    passRatio = passing / extremes.pixelCount;
+  }
 
   return {
     lMax: extremes.lMax,
@@ -152,5 +208,6 @@ export function extractPixelLuminance(
     crAgainstLightest: contrastRatio(textColor, extremes.lMaxColor),
     crAgainstDarkest: contrastRatio(textColor, extremes.lMinColor),
     pixelCount: extremes.pixelCount,
+    passRatio,
   };
 }
