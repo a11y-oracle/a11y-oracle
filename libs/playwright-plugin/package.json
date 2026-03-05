@@ -1,6 +1,6 @@
 {
   "name": "@a11y-oracle/playwright-plugin",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Playwright test fixture for accessibility speech assertions, keyboard navigation, and focus indicator validation",
   "license": "MIT",
   "author": "a11y-oracle",
@@ -45,7 +45,7 @@
     "@playwright/test": ">=1.40.0"
   },
   "dependencies": {
-    "@a11y-oracle/core-engine": "1.1.1",
+    "@a11y-oracle/core-engine": "1.1.2",
     "tslib": "^2.3.0"
   }
 }

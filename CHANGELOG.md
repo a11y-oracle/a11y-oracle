@@ -1,3 +1,14 @@
+## 1.1.2 (2026-03-05)
+
+### 🩹 Fixes
+
+- **focus-analyzer:** detect rgba-transparent outlines and extract outermost box-shadow color ([aad7063](https://github.com/a11y-oracle/a11y-oracle/commit/aad7063))
+
+### ❤️ Thank You
+
+- Claude Opus 4.6
+- Preston Lamb @pjlamb12
+
 ## 1.1.1 (2026-03-05)
 
 ### 🩹 Fixes
