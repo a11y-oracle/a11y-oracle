@@ -73,7 +73,7 @@ The `VisualContrastAnalyzer.analyzeElement()` method runs this pipeline:
 
    If a valid halo is found and its color passes the threshold against the background, the element passes without a screenshot.
 
-4. **Screenshot Capture** — Hides the element's text (sets `color: transparent`), captures a clipped screenshot via CDP `Page.captureScreenshot`, then restores the text.
+4. **Screenshot Capture** — Scrolls the element into the viewport (ensuring off-screen elements produce valid screenshots), hides the element's text (sets `color: transparent`), captures a clipped screenshot via CDP `Page.captureScreenshot`, then restores the text.
 
 5. **Pixel Analysis** — Decodes the PNG, scans all opaque pixels for luminance extremes (lightest and darkest), and computes contrast ratios against the text color.
 
@@ -134,7 +134,7 @@ Fetch computed styles for an element via CDP.
 
 #### `captureElementBackground(cdp, selector): Promise<{ pngBuffer: Buffer; textColor: RGBColor | null } | null>`
 
-Capture a clipped screenshot of an element with its text hidden.
+Capture a clipped screenshot of an element with its text hidden. Automatically scrolls the element into the viewport before capture, ensuring elements below the fold produce valid screenshots instead of blank images.
 
 ## Types
 

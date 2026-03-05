@@ -49,7 +49,12 @@ const resolved = await resolveAllIncomplete(cdpSession, axeResults);
 ```typescript
 const resolved = await resolveAllIncomplete(cdpSession, axeResults, {
   wcagLevel: 'wcag22aa',
-  contrast: { threshold: 4.5, largeTextThreshold: 3.0 },
+  contrast: {
+    threshold: 4.5,              // normal text contrast ratio
+    largeTextThreshold: 3.0,     // large text contrast ratio
+    supermajorityPassRatio: 0.75, // auto-pass split decisions when 75%+ pixels pass
+    bestCaseMultiplier: 2.0,     // auto-pass when best-case CR exceeds 2× threshold
+  },
   focusIndicator: { focusSettleDelay: 150, diffThreshold: 0.2 },
   skipRules: ['frame-tested'], // skip specific resolvers
 });
@@ -118,9 +123,14 @@ Orchestrator that pipes results through all 10 resolvers in sequence. Each resol
 
 #### `resolveIncompleteContrast(cdp, axeResults, options?)`
 
-Resolves `color-contrast` incomplete entries using CSS halo heuristics and pixel-level screenshot analysis.
+Resolves `color-contrast` incomplete entries using CSS halo heuristics and pixel-level screenshot analysis. Resolved nodes (both passes and violations) are enriched with contrast data in the axe check's `data` field, including `contrastRatio`, `expectedRatio`, `fgColor`, `bgColorLightest`, `bgColorDarkest`, and `algorithm` (`'visual-pixel'` or `'visual-halo'`).
 
-- **Options:** `ContrastResolutionOptions` — `wcagLevel`, `threshold`, `largeTextThreshold`
+- **Options:** `ContrastResolutionOptions`:
+  - `wcagLevel` — WCAG conformance level (default: `'wcag22aa'`). Thresholds are derived automatically (AA → 4.5/3.0). Level A has no contrast SC so the resolver is skipped.
+  - `threshold` — Override minimum contrast ratio for normal text (overrides `wcagLevel`)
+  - `largeTextThreshold` — Override minimum contrast ratio for large text (overrides `wcagLevel`)
+  - `supermajorityPassRatio` — During a split decision (one extreme passes, one fails), auto-pass if at least this fraction of pixels pass (default: `0.75`)
+  - `bestCaseMultiplier` — During a split decision, auto-pass if the best-case contrast ratio exceeds the threshold multiplied by this value (default: `2.0`)
 - Automatically detects large text from axe-core's check data (>= 24px or bold >= 18.66px)
 
 #### `resolveIdenticalLinksSamePurpose(cdp, axeResults)`
@@ -167,7 +177,7 @@ Resolves `aria-hidden-focus` via a single keyboard Tab traversal across all flag
 
 #### `resolveFocusIndicator(cdp, axeResults, options?)`
 
-Resolves `focus-indicator` by pixel-diffing before/after focus screenshots.
+Resolves `focus-indicator` by pixel-diffing before/after focus screenshots. Elements are scrolled into the viewport before capture, ensuring off-screen elements produce valid screenshots. Enables focus emulation via `Emulation.setFocusEmulationEnabled` so focus indicators render even in headless browsers or Cypress AUT iframes.
 
 - **Options:** `FocusIndicatorOptions` — `focusSettleDelay` (default: 100), `diffThreshold` (default: 0.1%)
 - Screenshots are identical → **Violation**; pixels changed → **Pass**

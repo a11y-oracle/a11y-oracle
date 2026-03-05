@@ -267,7 +267,7 @@ This is an Nx monorepo. Common tasks:
 # Build all libraries
 npm exec nx run-many -- --targets=build
 
-# Run all unit tests (431 tests across 6 packages)
+# Run all unit tests (447 tests across 6 packages)
 npm exec nx run-many -- --targets=test
 
 # Run core engine unit tests (129 tests)
@@ -276,16 +276,16 @@ npm exec nx test core-engine
 # Run keyboard engine unit tests (17 tests)
 npm exec nx test keyboard-engine
 
-# Run focus analyzer unit tests (56 tests)
+# Run focus analyzer unit tests (59 tests)
 npm exec nx test focus-analyzer
 
-# Run visual engine unit tests (44 tests)
+# Run visual engine unit tests (56 tests)
 npm exec nx test visual-engine
 
 # Run audit formatter unit tests (115 tests)
 npm exec nx test audit-formatter
 
-# Run axe-bridge unit tests (70 tests)
+# Run axe-bridge unit tests (71 tests)
 npm exec nx test axe-bridge
 
 # Run Playwright E2E tests (53 tests)

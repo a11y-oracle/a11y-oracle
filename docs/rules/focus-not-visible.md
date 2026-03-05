@@ -29,6 +29,11 @@ Many CSS reset libraries (normalize.css, reset.css, or framework resets) remove 
 button:focus {
   outline-color: transparent;
 }
+
+/* Also detected: rgba-transparent outlines (Chrome reports this format) */
+button:focus {
+  outline-color: rgba(0, 0, 0, 0);
+}
 ```
 
 **Custom components styled only for mouse interaction:**

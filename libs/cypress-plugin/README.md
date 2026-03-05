@@ -459,7 +459,9 @@ Cypress runs the app under test (AUT) inside an iframe within its runner page. T
 
 3. **Isolated execution context** — For `Runtime.evaluate` calls (focus indicator analysis, tab order, trap detection), the plugin creates an isolated world in the AUT frame via `Page.createIsolatedWorld`. This isolated world shares the same DOM (including `document.activeElement`, computed styles, etc.) but has its own JavaScript scope, ensuring evaluations target the AUT content.
 
-4. **Focus management** — Before each keyboard event, the plugin uses `DOM.focus()` on the AUT iframe element so that `Input.dispatchKeyEvent` reaches the correct frame.
+4. **Screenshot coordinate translation** — `getBoundingClientRect()` inside the AUT iframe returns iframe-relative coordinates, but `Page.captureScreenshot` clips from the top-level browser viewport. The plugin queries the AUT iframe's position in the viewport and offsets all screenshot clip coordinates accordingly. This ensures pixel-level analysis (color contrast, focus indicator diffing) captures the correct region.
+
+5. **Focus management** — Before each keyboard event, the plugin uses `DOM.focus()` on the AUT iframe element so that `Input.dispatchKeyEvent` reaches the correct frame.
 
 ### CDP Flow
 

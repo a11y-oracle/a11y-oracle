@@ -59,12 +59,12 @@ Extracts computed CSS properties (`outline`, `box-shadow`, `border-color`, `back
 Returns a default "not visible" indicator if no element has focus.
 
 **Visibility detection:**
-- An element has a visible **outline** if `outline-width` is not `0px` and `outline-color` is not `transparent`
+- An element has a visible **outline** if `outline-width` is not `0px` and the outline color has a non-zero alpha channel (detects both the `transparent` keyword and `rgba(0, 0, 0, 0)` which Chrome reports for transparent outlines)
 - An element has a visible **box-shadow** if `box-shadow` is not `none`
 
 **Contrast calculation:**
 - For outlines: contrast ratio between `outline-color` and `background-color`
-- For box-shadows: extracts the first color from the `box-shadow` value and computes contrast against `background-color`
+- For box-shadows: extracts all colors from the `box-shadow` value, filters out transparent ones, and uses the **outermost visible color** (last non-transparent) for contrast calculation. This correctly handles Tailwind CSS multi-ring patterns where the decorative spacer ring appears first and the actual focus indicator ring appears last.
 - Returns `contrastRatio: null` if colors cannot be reliably parsed (e.g., gradients, complex color functions)
 
 **WCAG 2.4.12 AA compliance:** `meetsWCAG_AA` is `true` when the indicator is visible AND the contrast ratio >= 3.0.
@@ -199,6 +199,5 @@ export type { RGBColor, FocusIndicator, TabOrderEntry, TraversalResult, TabOrder
 ## Limitations
 
 - **Complex focus indicators** — Gradients, CSS `color-mix()`, and other advanced color functions return `contrastRatio: null` because they cannot be reliably parsed into a single color value.
-- **Box-shadow parsing** — Only the first color found in a `box-shadow` value is used for contrast calculation. Multi-layer box-shadows may not be fully analyzed.
 - **Keyboard trap detection** — Tests with Tab key only. Intentional focus traps (e.g., modal dialogs) should be tested separately with Escape key navigation.
 - **`tabIndex` ordering** — The tab order extraction follows the standard algorithm (positive `tabIndex` first, then `tabIndex=0` in DOM order), but doesn't account for Shadow DOM boundaries.

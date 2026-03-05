@@ -170,10 +170,27 @@ For the `color-contrast` resolver specifically, the bridge analyzes each node th
 
 1. **CSS Halo Check** (fast path) — Detects `-webkit-text-stroke` or multi-directional `text-shadow` that guarantees text readability without needing a screenshot.
 
-2. **Pixel Analysis** (fallback) — Captures a screenshot of the element's background with text hidden, scans for the lightest and darkest pixels, and applies the WCAG Safe Assessment Matrix:
+2. **Pixel Analysis** (fallback) — Scrolls the element into the viewport, captures a screenshot of the element's background with text hidden, scans for the lightest and darkest pixels, and applies the WCAG Safe Assessment Matrix:
    - **Pass**: Worst-case contrast (against lightest background) meets threshold
    - **Violation**: Best-case contrast (against darkest background) fails threshold
    - **Incomplete**: Split decision — one extreme passes, the other fails
+
+   Split decisions can be auto-resolved via two configurable heuristics:
+   - **Supermajority rule** (`supermajorityPassRatio`, default `0.75`) — If >= 75% of pixels pass, auto-pass
+   - **Best-case multiplier** (`bestCaseMultiplier`, default `2.0`) — If the best-case contrast ratio exceeds 2× the threshold, auto-pass
+
+### Enriched Contrast Data
+
+Resolved nodes (both passes and violations) include contrast analysis data in the axe check's `data` field:
+
+| Field | Description |
+|-------|-------------|
+| `contrastRatio` | The measured contrast ratio used for the decision |
+| `expectedRatio` | The WCAG threshold that was applied (4.5 or 3.0) |
+| `fgColor` | Foreground text color as `rgb(r, g, b)` |
+| `bgColorLightest` | Lightest background pixel color (pixel analysis only) |
+| `bgColorDarkest` | Darkest background pixel color (pixel analysis only) |
+| `algorithm` | `'visual-pixel'` or `'visual-halo'` |
 
 ### Large Text
 
