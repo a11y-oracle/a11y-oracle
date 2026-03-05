@@ -154,6 +154,68 @@ describe('FocusAnalyzer', () => {
       expect(indicator.isVisible).toBe(false);
     });
 
+    it('returns not visible when outline color is rgba transparent', async () => {
+      const cdp = createMockCDP({
+        focusStyles: {
+          outline: '2px solid rgba(0, 0, 0, 0)',
+          outlineColor: 'rgba(0, 0, 0, 0)',
+          outlineWidth: '2px',
+          outlineOffset: '0px',
+          boxShadow: 'none',
+          borderColor: 'rgb(0, 0, 0)',
+          backgroundColor: 'rgb(255, 255, 255)',
+        },
+      });
+
+      const analyzer = new FocusAnalyzer(cdp);
+      const indicator = await analyzer.getFocusIndicator();
+
+      expect(indicator.isVisible).toBe(false);
+    });
+
+    it('falls through to box-shadow when outline is rgba transparent', async () => {
+      const cdp = createMockCDP({
+        focusStyles: {
+          outline: '2px solid rgba(0, 0, 0, 0)',
+          outlineColor: 'rgba(0, 0, 0, 0)',
+          outlineWidth: '2px',
+          outlineOffset: '0px',
+          boxShadow:
+            'rgb(9, 79, 194) 0px 0px 0px 2px, rgb(255, 255, 255) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px',
+          borderColor: 'rgb(0, 0, 0)',
+          backgroundColor: 'rgba(0, 0, 0, 0)',
+        },
+      });
+
+      const analyzer = new FocusAnalyzer(cdp);
+      const indicator = await analyzer.getFocusIndicator();
+
+      expect(indicator.isVisible).toBe(true);
+      expect(indicator.contrastRatio).not.toBeNull();
+    });
+
+    it('extracts outermost visible color from multi-ring box-shadow', async () => {
+      const cdp = createMockCDP({
+        focusStyles: {
+          outline: 'none',
+          outlineColor: 'transparent',
+          outlineWidth: '0px',
+          outlineOffset: '0px',
+          boxShadow:
+            'rgb(9, 79, 194) 0px 0px 0px 2px, rgb(255, 255, 255) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px',
+          borderColor: 'rgb(0, 0, 0)',
+          backgroundColor: 'rgb(0, 0, 0)',
+        },
+      });
+
+      const analyzer = new FocusAnalyzer(cdp);
+      const indicator = await analyzer.getFocusIndicator();
+
+      expect(indicator.isVisible).toBe(true);
+      // White ring (outermost visible) vs black bg = 21:1
+      expect(indicator.contrastRatio).toBeGreaterThan(20);
+    });
+
     it('returns empty indicator when no element has focus', async () => {
       const cdp = createMockCDP({ focusStyles: null });
 

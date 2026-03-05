@@ -136,10 +136,12 @@ export class FocusAnalyzer {
     }
 
     const outlineWidth = styles.outlineWidth || '0px';
+    const outlineParsed = parseColor(styles.outlineColor);
     const hasOutline =
       outlineWidth !== '0px' &&
       outlineWidth !== '0' &&
-      styles.outlineColor !== 'transparent';
+      !!outlineParsed &&
+      outlineParsed.a > 0;
     const hasBoxShadow =
       styles.boxShadow !== 'none' && styles.boxShadow !== '';
 
@@ -307,16 +309,25 @@ export class FocusAnalyzer {
    * Example: `"0px 0px 0px 3px rgb(52, 152, 219)"` → rgb(52, 152, 219)
    */
   private extractBoxShadowColor(boxShadow: string): ReturnType<typeof parseColor> {
-    // Try to find an rgb/rgba color in the box-shadow
-    const rgbMatch = boxShadow.match(/rgba?\([^)]+\)/);
-    if (rgbMatch) {
-      return parseColor(rgbMatch[0]);
+    // Extract ALL color values from the box-shadow.
+    // For multi-ring patterns (e.g. Tailwind's ring-offset + ring + default),
+    // the outermost visible ring is the last non-transparent color.
+    const rgbMatches = boxShadow.match(/rgba?\([^)]+\)/g) ?? [];
+    const hexMatches = boxShadow.match(/#[0-9a-fA-F]{3,8}/g) ?? [];
+
+    // Collect all parsed colors in order of appearance
+    const colors: Array<ReturnType<typeof parseColor>> = [];
+    for (const m of rgbMatches) {
+      colors.push(parseColor(m));
+    }
+    for (const m of hexMatches) {
+      colors.push(parseColor(m));
     }
 
-    // Try to find a hex color
-    const hexMatch = boxShadow.match(/#[0-9a-fA-F]{3,8}/);
-    if (hexMatch) {
-      return parseColor(hexMatch[0]);
+    // Return the last non-transparent color (outermost visible ring)
+    for (let i = colors.length - 1; i >= 0; i--) {
+      const c = colors[i];
+      if (c && c.a > 0) return c;
     }
 
     return null;
