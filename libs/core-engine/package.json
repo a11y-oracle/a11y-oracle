@@ -1,6 +1,6 @@
 {
   "name": "@a11y-oracle/core-engine",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "description": "Framework-agnostic accessibility speech engine and unified A11yOrchestrator via Chrome DevTools Protocol",
   "license": "MIT",
   "author": "a11y-oracle",
@@ -43,9 +43,9 @@
     "!**/*.tsbuildinfo"
   ],
   "dependencies": {
-    "@a11y-oracle/cdp-types": "1.1.4",
-    "@a11y-oracle/keyboard-engine": "1.1.4",
-    "@a11y-oracle/focus-analyzer": "1.1.4",
+    "@a11y-oracle/cdp-types": "1.2.0",
+    "@a11y-oracle/keyboard-engine": "1.2.0",
+    "@a11y-oracle/focus-analyzer": "1.2.0",
     "devtools-protocol": "^0.0.1591961",
     "tslib": "^2.3.0"
   }

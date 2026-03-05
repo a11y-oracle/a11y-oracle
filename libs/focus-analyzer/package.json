@@ -1,6 +1,6 @@
 {
   "name": "@a11y-oracle/focus-analyzer",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "description": "Focus indicator CSS analysis (WCAG 2.4.12), tab order extraction, and keyboard trap detection",
   "license": "MIT",
   "author": "a11y-oracle",
@@ -42,8 +42,8 @@
     "!**/*.tsbuildinfo"
   ],
   "dependencies": {
-    "@a11y-oracle/cdp-types": "1.1.4",
-    "@a11y-oracle/keyboard-engine": "1.1.4",
+    "@a11y-oracle/cdp-types": "1.2.0",
+    "@a11y-oracle/keyboard-engine": "1.2.0",
     "tslib": "^2.3.0"
   }
 }

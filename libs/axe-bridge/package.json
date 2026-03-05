@@ -1,6 +1,6 @@
 {
   "name": "@a11y-oracle/axe-bridge",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "description": "Axe-core result post-processor that resolves 10 incomplete rules using visual analysis, keyboard interaction, and CDP inspection",
   "license": "MIT",
   "author": "a11y-oracle",
@@ -44,10 +44,10 @@
     "!**/*.tsbuildinfo"
   ],
   "dependencies": {
-    "@a11y-oracle/cdp-types": "1.1.4",
-    "@a11y-oracle/focus-analyzer": "1.1.4",
-    "@a11y-oracle/keyboard-engine": "1.1.4",
-    "@a11y-oracle/visual-engine": "1.1.4",
+    "@a11y-oracle/cdp-types": "1.2.0",
+    "@a11y-oracle/focus-analyzer": "1.2.0",
+    "@a11y-oracle/keyboard-engine": "1.2.0",
+    "@a11y-oracle/visual-engine": "1.2.0",
     "tslib": "^2.3.0"
   }
 }

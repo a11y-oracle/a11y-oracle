@@ -1,3 +1,7 @@
+## 1.2.0 (2026-03-05)
+
+This was a version bump only for focus-analyzer to align it with other projects, there were no code changes.
+
 ## 1.1.4 (2026-03-05)
 
 This was a version bump only for focus-analyzer to align it with other projects, there were no code changes.

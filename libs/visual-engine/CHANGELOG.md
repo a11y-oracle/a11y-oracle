@@ -1,3 +1,14 @@
+## 1.2.0 (2026-03-05)
+
+### 🚀 Features
+
+- **visual-engine:** add configurable supermajority and best-case override rules ([4bf714c](https://github.com/a11y-oracle/a11y-oracle/commit/4bf714c))
+
+### ❤️ Thank You
+
+- Claude Opus 4.6
+- Preston Lamb @pjlamb12
+
 ## 1.1.4 (2026-03-05)
 
 ### 🚀 Features

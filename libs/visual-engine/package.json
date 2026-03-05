@@ -1,6 +1,6 @@
 {
   "name": "@a11y-oracle/visual-engine",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "description": "Visual pixel analysis engine for color contrast resolution using CDP screenshot capture and luminance analysis",
   "license": "MIT",
   "author": "a11y-oracle",
@@ -43,8 +43,8 @@
     "!**/*.tsbuildinfo"
   ],
   "dependencies": {
-    "@a11y-oracle/cdp-types": "1.1.4",
-    "@a11y-oracle/focus-analyzer": "1.1.4",
+    "@a11y-oracle/cdp-types": "1.2.0",
+    "@a11y-oracle/focus-analyzer": "1.2.0",
     "fast-png": "^8.0.0",
     "tslib": "^2.3.0"
   }
