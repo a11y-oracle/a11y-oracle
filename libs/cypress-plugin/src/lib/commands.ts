@@ -141,6 +141,7 @@ let engine: SpeechEngine | null = null;
 let orchestrator: A11yOrchestrator | null = null;
 let autFrameId: string | null = null;
 let autContextId: number | null = null;
+let autIframeBounds: { x: number; y: number } | null = null;
 
 /**
  * Send a raw CDP command through Cypress's automation channel.
@@ -179,6 +180,24 @@ function createFrameAwareCDPAdapter(): CDPSessionLike {
       // Scope Runtime.evaluate to AUT frame's execution context
       if (method === 'Runtime.evaluate' && autContextId !== null) {
         p['contextId'] = autContextId;
+      }
+
+      // Translate iframe-relative clip coordinates to viewport coordinates.
+      // Runtime.evaluate runs inside the AUT iframe (via contextId), so
+      // getBoundingClientRect() returns iframe-relative coords. But
+      // Page.captureScreenshot clips relative to the top-level viewport.
+      if (
+        method === 'Page.captureScreenshot' &&
+        p['clip'] &&
+        autIframeBounds &&
+        (autIframeBounds.x !== 0 || autIframeBounds.y !== 0)
+      ) {
+        const clip = p['clip'] as Record<string, number>;
+        p['clip'] = {
+          ...clip,
+          x: clip.x + autIframeBounds.x,
+          y: clip.y + autIframeBounds.y,
+        };
       }
 
       return sendCDP(method, p);
@@ -239,6 +258,35 @@ async function findAUTContextId(frameId: string): Promise<number | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Get the AUT iframe's position in the top-level viewport.
+ *
+ * Runs `Runtime.evaluate` in the top-level context (without `contextId`)
+ * to find the AUT iframe and return its bounding rect origin. Adds
+ * `clientLeft`/`clientTop` to account for any iframe border.
+ *
+ * Used to translate iframe-relative coordinates from
+ * `getBoundingClientRect()` to viewport-absolute coordinates for
+ * `Page.captureScreenshot` clips.
+ */
+async function getAUTIframeBounds(): Promise<{ x: number; y: number }> {
+  const result = (await sendCDP('Runtime.evaluate', {
+    expression: `(() => {
+      const iframes = document.querySelectorAll('iframe');
+      for (const f of iframes) {
+        const src = f.getAttribute('src') || f.src || '';
+        if (src && !src.includes('/__/') && !src.includes('__cypress') && src !== 'about:blank') {
+          const rect = f.getBoundingClientRect();
+          return { x: rect.x + f.clientLeft, y: rect.y + f.clientTop };
+        }
+      }
+      return { x: 0, y: 0 };
+    })()`,
+    returnByValue: true,
+  })) as { result: { value: { x: number; y: number } } };
+  return result.result.value;
 }
 
 /**
@@ -349,6 +397,9 @@ Cypress.Commands.add(
 
       // Get the AUT frame's execution context for Runtime.evaluate
       autContextId = await findAUTContextId(autFrameId);
+
+      // Cache iframe bounds for screenshot coordinate translation
+      autIframeBounds = await getAUTIframeBounds();
 
       // Focus the AUT iframe so key events reach it
       await focusAUTFrame();
@@ -567,6 +618,7 @@ Cypress.Commands.add('disposeA11yOracle', () => {
     }
     autFrameId = null;
     autContextId = null;
+    autIframeBounds = null;
     return null;
   });
 });
