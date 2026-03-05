@@ -204,6 +204,38 @@ describe('resolveIncompleteContrast', () => {
     expect(cleaned.violations).toHaveLength(1);
     expect(cleaned.violations[0].nodes).toHaveLength(1);
     expect(cleaned.passes).toHaveLength(0);
+
+    // Violation node should include the measured contrast data
+    const violationNode = cleaned.violations[0].nodes[0];
+    const checkData = violationNode.any[0].data as Record<string, unknown>;
+    expect(checkData.contrastRatio).toBeDefined();
+    expect(typeof checkData.contrastRatio).toBe('number');
+    expect(checkData.contrastRatio as number).toBeCloseTo(1, 0);
+    expect(checkData.fgColor).toBe('rgb(255, 255, 255)');
+    expect(violationNode.any[0].message).toContain('Fails');
+  });
+
+  it('attaches measured contrast data to pass nodes', async () => {
+    // Black text on white background: ~21:1
+    const cdp = buildMockCDP({
+      textColors: { '#good': 'rgb(0, 0, 0)' },
+      backgrounds: { '#good': { r: 255, g: 255, b: 255 } },
+    });
+
+    const results = makeAxeResults({
+      incomplete: [makeColorContrastRule([makeNode('#good')])],
+    });
+
+    const cleaned = await resolveIncompleteContrast(cdp, results);
+    expect(cleaned.passes).toHaveLength(1);
+
+    const passNode = cleaned.passes[0].nodes[0];
+    const checkData = passNode.any[0].data as Record<string, unknown>;
+    expect(checkData.contrastRatio).toBeDefined();
+    expect(typeof checkData.contrastRatio).toBe('number');
+    expect(checkData.contrastRatio as number).toBeGreaterThan(4.5);
+    expect(checkData.fgColor).toBe('rgb(0, 0, 0)');
+    expect(passNode.any[0].message).toContain('Passes');
   });
 
   it('handles mixed results: some pass, some violate', async () => {

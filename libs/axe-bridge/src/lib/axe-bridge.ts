@@ -8,6 +8,7 @@
 
 import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
 import { VisualContrastAnalyzer } from '@a11y-oracle/visual-engine';
+import type { ContrastAnalysisResult } from '@a11y-oracle/visual-engine';
 import type {
   AxeResults,
   AxeNode,
@@ -125,9 +126,11 @@ export async function resolveIncompleteContrast(
 
     switch (result.category) {
       case 'pass':
+        enrichNodeWithContrastData(node, result);
         passNodes.push(node);
         break;
       case 'violation':
+        enrichNodeWithContrastData(node, result);
         violationNodes.push(node);
         break;
       case 'incomplete':
@@ -143,4 +146,39 @@ export async function resolveIncompleteContrast(
   });
 
   return clone;
+}
+
+/**
+ * Enrich an axe node's check data with measured contrast information
+ * from the visual analysis pipeline.
+ *
+ * Attaches the best-case measured contrast ratio, foreground color,
+ * and analysis reason to `node.any[0].data` and `node.any[0].message`.
+ * For violations, the best-case ratio is the highest contrast achieved
+ * (still below threshold). For passes, it's the worst-case ratio
+ * (still above threshold).
+ */
+function enrichNodeWithContrastData(
+  node: AxeNode,
+  result: ContrastAnalysisResult,
+): void {
+  if (!node.any[0]) return;
+
+  const data = (node.any[0].data ?? {}) as Record<string, unknown>;
+
+  if (result.pixels) {
+    // For violations: best-case (max) is the highest contrast still failing.
+    // For passes: worst-case (min) is the lowest contrast still passing.
+    data.contrastRatio =
+      result.category === 'violation'
+        ? Math.max(result.pixels.crAgainstLightest, result.pixels.crAgainstDarkest)
+        : Math.min(result.pixels.crAgainstLightest, result.pixels.crAgainstDarkest);
+  }
+
+  if (result.textColor) {
+    data.fgColor = `rgb(${result.textColor.r}, ${result.textColor.g}, ${result.textColor.b})`;
+  }
+
+  node.any[0].data = data;
+  node.any[0].message = result.reason;
 }
