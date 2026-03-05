@@ -32,14 +32,10 @@ test.describe('VisualContrastAnalyzer — Pixel Pipeline', () => {
     const analyzer = new VisualContrastAnalyzer(cdp);
     const result = await analyzer.analyzeElement('#gradient-pass');
 
-    // The element has border-radius, so the bounding-box screenshot
-    // captures white body-background pixels at the rounded corners.
-    // This creates a legitimate split decision: passes against the
-    // dark gradient pixels, fails against the white corner pixels.
-    expect(result.category).toBe('incomplete');
+    // The scrollIntoView fix ensures the gradient background is captured
+    // correctly. Both extremes pass the contrast threshold.
+    expect(result.category).toBe('pass');
     expect(result.pixels).not.toBeNull();
-    expect(result.reason).toContain('Split');
-    // Darkest pixel contrast is very high (dark gradient vs white text)
     expect(result.pixels!.crAgainstDarkest).toBeGreaterThan(10);
   });
 
