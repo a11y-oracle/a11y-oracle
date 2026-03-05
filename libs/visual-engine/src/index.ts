@@ -18,6 +18,7 @@ export type {
   ContrastCategory,
   HaloResult,
   PixelAnalysisResult,
+  PixelDistributionOptions,
   TextShadowPart,
   ElementComputedStyles,
 } from './lib/types.js';

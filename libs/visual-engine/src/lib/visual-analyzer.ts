@@ -6,7 +6,11 @@
  */
 
 import type { CDPSessionLike } from '@a11y-oracle/cdp-types';
-import type { ContrastAnalysisResult, HaloResult } from './types.js';
+import type {
+  ContrastAnalysisResult,
+  HaloResult,
+  PixelDistributionOptions,
+} from './types.js';
 import { analyzeHalo } from './halo-detector.js';
 import { extractPixelLuminance } from './pixel-analysis.js';
 import {
@@ -24,6 +28,15 @@ const DEFAULT_THRESHOLD = 4.5;
  * but >= 95% of pixels pass (or fail), the distribution overrides.
  */
 const PASS_RATIO_THRESHOLD = 0.95;
+
+/** Default supermajority pass ratio for split decisions. */
+const DEFAULT_SUPERMAJORITY_PASS_RATIO = 0.75;
+
+/**
+ * Default best-case multiplier. If the best extreme CR exceeds
+ * threshold × this value, auto-pass regardless of pixel distribution.
+ */
+const DEFAULT_BEST_CASE_MULTIPLIER = 2.0;
 
 const NO_HALO: HaloResult = {
   hasValidHalo: false,
@@ -44,9 +57,29 @@ const NO_HALO: HaloResult = {
  *   // Safe to filter out
  * }
  * ```
+ *
+ * @example
+ * ```typescript
+ * // With custom pixel distribution thresholds
+ * const analyzer = new VisualContrastAnalyzer(cdpSession, {
+ *   supermajorityPassRatio: 0.80,
+ *   bestCaseMultiplier: 2.5,
+ * });
+ * ```
  */
 export class VisualContrastAnalyzer {
-  constructor(private cdp: CDPSessionLike) {}
+  private readonly supermajorityPassRatio: number;
+  private readonly bestCaseMultiplier: number;
+
+  constructor(
+    private cdp: CDPSessionLike,
+    options?: PixelDistributionOptions,
+  ) {
+    this.supermajorityPassRatio =
+      options?.supermajorityPassRatio ?? DEFAULT_SUPERMAJORITY_PASS_RATIO;
+    this.bestCaseMultiplier =
+      options?.bestCaseMultiplier ?? DEFAULT_BEST_CASE_MULTIPLIER;
+  }
 
   /**
    * Analyze a single element's color contrast using the full pipeline.
@@ -171,6 +204,7 @@ export class VisualContrastAnalyzer {
 
     // Split decision — extremes disagree. Use pixel distribution to decide.
     if (pixels.passRatio != null) {
+      // Overwhelming consensus (95%+): pass or violation
       if (pixels.passRatio >= PASS_RATIO_THRESHOLD) {
         return {
           selector,
@@ -192,6 +226,36 @@ export class VisualContrastAnalyzer {
           reason: `Fails by pixel distribution (${(pixels.passRatio * 100).toFixed(1)}% of pixels pass, lightest: ${pixels.crAgainstLightest.toFixed(2)}, darkest: ${pixels.crAgainstDarkest.toFixed(2)})`,
         };
       }
+
+      // Supermajority: ≥75% of pixels pass — the dominant background
+      // clearly provides adequate contrast despite edge artifacts.
+      if (pixels.passRatio >= this.supermajorityPassRatio) {
+        return {
+          selector,
+          category: 'pass',
+          textColor: capture.textColor,
+          halo,
+          pixels,
+          reason: `Passes by supermajority (${(pixels.passRatio * 100).toFixed(1)}% of pixels pass, lightest: ${pixels.crAgainstLightest.toFixed(2)}, darkest: ${pixels.crAgainstDarkest.toFixed(2)})`,
+        };
+      }
+    }
+
+    // Best-case override: if the most favorable extreme CR far exceeds the
+    // WCAG threshold, the element almost certainly has adequate contrast.
+    // Non-representative pixels from screenshot artifacts (adjacent elements,
+    // decorative overlays, form styling) are the likely cause of the low
+    // pass ratio.
+    const bestCR = Math.max(pixels.crAgainstLightest, pixels.crAgainstDarkest);
+    if (bestCR > threshold * this.bestCaseMultiplier) {
+      return {
+        selector,
+        category: 'pass',
+        textColor: capture.textColor,
+        halo,
+        pixels,
+        reason: `Passes by best-case override (best: ${bestCR.toFixed(2)} > ${threshold.toFixed(1)}×${this.bestCaseMultiplier} = ${(threshold * this.bestCaseMultiplier).toFixed(1)}, ${pixels.passRatio != null ? `${(pixels.passRatio * 100).toFixed(1)}% pass, ` : ''}lightest: ${pixels.crAgainstLightest.toFixed(2)}, darkest: ${pixels.crAgainstDarkest.toFixed(2)})`,
+      };
     }
 
     return {

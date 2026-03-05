@@ -103,7 +103,10 @@ export async function resolveIncompleteContrast(
   if (!found) return clone;
 
   const { index: ccIndex, rule: ccRule } = found;
-  const analyzer = new VisualContrastAnalyzer(cdp);
+  const analyzer = new VisualContrastAnalyzer(cdp, {
+    supermajorityPassRatio: options?.supermajorityPassRatio,
+    bestCaseMultiplier: options?.bestCaseMultiplier,
+  });
 
   const passNodes: AxeNode[] = [];
   const violationNodes: AxeNode[] = [];

@@ -119,6 +119,18 @@ export interface ContrastResolutionOptions {
   threshold?: number;
   /** Minimum contrast ratio for large text. Overrides wcagLevel. */
   largeTextThreshold?: number;
+  /**
+   * If at least this fraction of pixels pass during a split decision,
+   * auto-pass the element (supermajority rule).
+   * Default: `0.75`.
+   */
+  supermajorityPassRatio?: number;
+  /**
+   * If the best-case extreme CR exceeds the WCAG threshold multiplied
+   * by this value, auto-pass regardless of pixel distribution.
+   * Default: `2.0`.
+   */
+  bestCaseMultiplier?: number;
 }
 
 // ─── Per-resolver option interfaces ─────────────────────────────

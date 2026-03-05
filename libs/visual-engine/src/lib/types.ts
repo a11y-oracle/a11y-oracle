@@ -74,6 +74,30 @@ export interface ElementComputedStyles {
   backgroundImage: string;
 }
 
+/**
+ * Configuration for the pixel distribution decision logic in
+ * split-decision scenarios (where the lightest and darkest extremes
+ * disagree on pass/fail).
+ */
+export interface PixelDistributionOptions {
+  /**
+   * If at least this fraction of pixels pass, auto-pass the element
+   * even when the extremes disagree (supermajority rule).
+   * Default: `0.75`.
+   */
+  supermajorityPassRatio?: number;
+
+  /**
+   * If the best-case extreme contrast ratio exceeds the WCAG
+   * threshold multiplied by this value, auto-pass the element
+   * regardless of pixel distribution. Handles screenshot artifacts
+   * where adjacent elements or overlays introduce non-representative
+   * pixels.
+   * Default: `2.0`.
+   */
+  bestCaseMultiplier?: number;
+}
+
 /** Full result of the visual contrast analysis for a single element. */
 export interface ContrastAnalysisResult {
   /** CSS selector of the analyzed element. */

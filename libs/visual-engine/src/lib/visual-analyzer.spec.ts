@@ -196,6 +196,7 @@ describe('VisualContrastAnalyzer', () => {
   describe('pixel pipeline — split decision', () => {
     it('returns incomplete when pixel distribution is genuinely ambiguous', async () => {
       // White text on a 50/50 gradient (white→black) — half pass, half fail
+      // Disable supermajority and best-case override to test pure split
       const cdp = buildMockCDP({
         captureInfo: {
           color: 'rgb(255, 255, 255)',
@@ -206,7 +207,10 @@ describe('VisualContrastAnalyzer', () => {
         },
         screenshotBuffer: createGradientPng(10, 1),
       });
-      const analyzer = new VisualContrastAnalyzer(cdp);
+      const analyzer = new VisualContrastAnalyzer(cdp, {
+        supermajorityPassRatio: 1.0,
+        bestCaseMultiplier: Infinity,
+      });
       const result = await analyzer.analyzeElement('#gradient-text');
       expect(result.category).toBe('incomplete');
       expect(result.reason).toContain('Split decision');
@@ -288,6 +292,173 @@ describe('VisualContrastAnalyzer', () => {
       expect(result.category).toBe('violation');
       expect(result.reason).toContain('pixel distribution');
       expect(result.pixels!.passRatio).toBeLessThanOrEqual(0.05);
+    });
+  });
+
+  describe('pixel pipeline — supermajority pass', () => {
+    /**
+     * Create a screenshot where a controlled fraction of pixels pass.
+     * For white text (255,255,255): black pixels pass (~21:1), white pixels fail (~1:1).
+     */
+    function createMixedScreenshot(totalPixels: number, passingFraction: number): Uint8Array {
+      const passingCount = Math.round(totalPixels * passingFraction);
+      const data = new Uint8Array(totalPixels * 4);
+      for (let i = 0; i < totalPixels; i++) {
+        const offset = i * 4;
+        if (i < passingCount) {
+          // Black pixel — white text on black = ~21:1 (pass)
+          data[offset] = 0;
+          data[offset + 1] = 0;
+          data[offset + 2] = 0;
+        } else {
+          // White pixel — white text on white = ~1:1 (fail)
+          data[offset] = 255;
+          data[offset + 1] = 255;
+          data[offset + 2] = 255;
+        }
+        data[offset + 3] = 255;
+      }
+      return encode({ width: totalPixels, height: 1, data, channels: 4, depth: 8 });
+    }
+
+    it('returns pass when 80% of pixels pass (above default 75% supermajority)', async () => {
+      const cdp = buildMockCDP({
+        captureInfo: { color: 'rgb(255, 255, 255)', x: 0, y: 0, width: 100, height: 1 },
+        screenshotBuffer: createMixedScreenshot(100, 0.80),
+      });
+      const analyzer = new VisualContrastAnalyzer(cdp);
+      const result = await analyzer.analyzeElement('#nav-gradient');
+      expect(result.category).toBe('pass');
+      expect(result.reason).toContain('supermajority');
+    });
+
+    it('stays incomplete when 60% of pixels pass (below 75% supermajority) and best-case override disabled', async () => {
+      const cdp = buildMockCDP({
+        captureInfo: { color: 'rgb(255, 255, 255)', x: 0, y: 0, width: 100, height: 1 },
+        screenshotBuffer: createMixedScreenshot(100, 0.60),
+      });
+      // Disable best-case override to isolate the supermajority check
+      const analyzer = new VisualContrastAnalyzer(cdp, {
+        bestCaseMultiplier: Infinity,
+      });
+      const result = await analyzer.analyzeElement('#partial-gradient');
+      expect(result.category).toBe('incomplete');
+      expect(result.reason).toContain('Split decision');
+    });
+
+    it('respects custom supermajority ratio', async () => {
+      const cdp = buildMockCDP({
+        captureInfo: { color: 'rgb(255, 255, 255)', x: 0, y: 0, width: 100, height: 1 },
+        screenshotBuffer: createMixedScreenshot(100, 0.88),
+      });
+      // Set a strict 90% supermajority — 88% should NOT pass
+      const analyzer = new VisualContrastAnalyzer(cdp, {
+        supermajorityPassRatio: 0.90,
+        bestCaseMultiplier: Infinity,
+      });
+      const result = await analyzer.analyzeElement('#strict-supermajority');
+      expect(result.category).toBe('incomplete');
+    });
+  });
+
+  describe('pixel pipeline — best-case override', () => {
+    it('returns pass when best CR exceeds threshold × 2 despite low pass ratio', async () => {
+      // Dark text (rgb(17,24,39) = text-gray-900) on mostly-dark bg with a few white pixels
+      // White bg pixel: CR against text-gray-900 ≈ 16:1 (>> 4.5 × 2 = 9.0)
+      // Dark bg pixels: CR ≈ 1:1 (fail)
+      // 10% pass — too low for supermajority, but best-case CR >> threshold × 2
+      const totalPixels = 100;
+      const data = new Uint8Array(totalPixels * 4);
+      for (let i = 0; i < totalPixels; i++) {
+        const offset = i * 4;
+        if (i < 10) {
+          // White pixel (pass: ~16:1 against dark text)
+          data[offset] = 255;
+          data[offset + 1] = 255;
+          data[offset + 2] = 255;
+        } else {
+          // Near-black pixel (fail: ~1:1 against dark text)
+          data[offset] = 20;
+          data[offset + 1] = 20;
+          data[offset + 2] = 20;
+        }
+        data[offset + 3] = 255;
+      }
+      const screenshot = encode({ width: totalPixels, height: 1, data, channels: 4, depth: 8 });
+
+      const cdp = buildMockCDP({
+        captureInfo: { color: 'rgb(17, 24, 39)', x: 0, y: 0, width: 100, height: 1 },
+        screenshotBuffer: screenshot,
+      });
+      const analyzer = new VisualContrastAnalyzer(cdp);
+      const result = await analyzer.analyzeElement('#overlap-false-positive');
+      expect(result.category).toBe('pass');
+      expect(result.reason).toContain('best-case override');
+    });
+
+    it('stays incomplete when best CR does not exceed threshold × multiplier', async () => {
+      // Text with moderate contrast — best case only slightly above threshold
+      // Gray text on mixed bg: best CR ~5.5 (< 4.5 × 2 = 9.0)
+      const totalPixels = 100;
+      const data = new Uint8Array(totalPixels * 4);
+      for (let i = 0; i < totalPixels; i++) {
+        const offset = i * 4;
+        if (i < 10) {
+          // White pixel (pass for gray text)
+          data[offset] = 255;
+          data[offset + 1] = 255;
+          data[offset + 2] = 255;
+        } else {
+          // Near-gray pixel (fail for gray text)
+          data[offset] = 150;
+          data[offset + 1] = 150;
+          data[offset + 2] = 150;
+        }
+        data[offset + 3] = 255;
+      }
+      const screenshot = encode({ width: totalPixels, height: 1, data, channels: 4, depth: 8 });
+
+      const cdp = buildMockCDP({
+        captureInfo: { color: 'rgb(100, 100, 100)', x: 0, y: 0, width: 100, height: 1 },
+        screenshotBuffer: screenshot,
+      });
+      const analyzer = new VisualContrastAnalyzer(cdp, {
+        supermajorityPassRatio: 1.0,  // disable supermajority
+      });
+      const result = await analyzer.analyzeElement('#low-contrast-gradient');
+      expect(result.category).toBe('incomplete');
+    });
+
+    it('respects custom bestCaseMultiplier', async () => {
+      // Dark text on mostly-dark bg with white pixels — best CR ~16
+      // With multiplier 4.0: threshold × 4 = 18.0 → 16 < 18 → should NOT pass
+      const totalPixels = 100;
+      const data = new Uint8Array(totalPixels * 4);
+      for (let i = 0; i < totalPixels; i++) {
+        const offset = i * 4;
+        if (i < 10) {
+          data[offset] = 255;
+          data[offset + 1] = 255;
+          data[offset + 2] = 255;
+        } else {
+          data[offset] = 20;
+          data[offset + 1] = 20;
+          data[offset + 2] = 20;
+        }
+        data[offset + 3] = 255;
+      }
+      const screenshot = encode({ width: totalPixels, height: 1, data, channels: 4, depth: 8 });
+
+      const cdp = buildMockCDP({
+        captureInfo: { color: 'rgb(17, 24, 39)', x: 0, y: 0, width: 100, height: 1 },
+        screenshotBuffer: screenshot,
+      });
+      const analyzer = new VisualContrastAnalyzer(cdp, {
+        supermajorityPassRatio: 1.0,
+        bestCaseMultiplier: 4.0,
+      });
+      const result = await analyzer.analyzeElement('#strict-best-case');
+      expect(result.category).toBe('incomplete');
     });
   });
 
