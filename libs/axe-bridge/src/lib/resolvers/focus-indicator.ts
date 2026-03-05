@@ -94,6 +94,9 @@ export async function resolveFocusIndicator(
       expression: `(() => {
         const el = document.querySelector(${JSON.stringify(selector)});
         if (!el) return null;
+        // Scroll element into viewport so Page.captureScreenshot can capture it.
+        // Without this, off-screen elements produce white screenshots.
+        el.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'nearest' });
         const rect = el.getBoundingClientRect();
         // Expand clip region slightly to capture outline/box-shadow
         const pad = 4;

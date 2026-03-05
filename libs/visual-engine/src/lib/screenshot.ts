@@ -59,6 +59,9 @@ function getCaptureInfoAndHideScript(selector: string): string {
 (() => {
   const el = document.querySelector(${JSON.stringify(selector)});
   if (!el) return null;
+  // Scroll element into viewport so Page.captureScreenshot can capture it.
+  // Without this, off-screen elements produce white screenshots.
+  el.scrollIntoView({ behavior: 'instant', block: 'center', inline: 'nearest' });
   const cs = window.getComputedStyle(el);
   const color = cs.color || '';
   const rect = el.getBoundingClientRect();
