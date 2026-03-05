@@ -1,6 +1,6 @@
 {
   "name": "@a11y-oracle/audit-formatter",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Converts accessibility findings to axe-core-compatible OracleIssue objects with WCAG rule metadata",
   "license": "MIT",
   "author": "a11y-oracle",
@@ -42,8 +42,8 @@
     "!**/*.tsbuildinfo"
   ],
   "dependencies": {
-    "@a11y-oracle/core-engine": "1.0.0",
-    "@a11y-oracle/focus-analyzer": "1.0.0",
+    "@a11y-oracle/core-engine": "1.1.0",
+    "@a11y-oracle/focus-analyzer": "1.1.0",
     "tslib": "^2.3.0"
   }
 }

@@ -1,3 +1,14 @@
+## 1.1.0 (2026-03-05)
+
+### 🩹 Fixes
+
+- **axe-bridge:** attach measured contrast ratio to resolved violation and pass nodes ([58ad7e5](https://github.com/a11y-oracle/a11y-oracle/commit/58ad7e5))
+
+### ❤️ Thank You
+
+- Claude Opus 4.6
+- Preston Lamb @pjlamb12
+
 # 1.0.0 (2026-03-04)
 
 ### 🚀 Features
