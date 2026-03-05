@@ -1,3 +1,14 @@
+## 1.1.4 (2026-03-05)
+
+### 🚀 Features
+
+- **visual-engine:** add pixel distribution threshold for split decisions ([961314d](https://github.com/a11y-oracle/a11y-oracle/commit/961314d))
+
+### ❤️ Thank You
+
+- Claude Opus 4.6
+- Preston Lamb @pjlamb12
+
 ## 1.1.3 (2026-03-05)
 
 This was a version bump only for visual-engine to align it with other projects, there were no code changes.
