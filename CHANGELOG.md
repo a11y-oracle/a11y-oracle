@@ -1,3 +1,14 @@
+## 1.3.0 (2026-03-06)
+
+### 🚀 Features
+
+- **cypress-plugin:** fix CSS transform scale bug and export reusable CDP adapter ([#13](https://github.com/a11y-oracle/a11y-oracle/issues/13))
+
+### ❤️ Thank You
+
+- Claude Opus 4.6
+- Preston Lamb @pjlamb12
+
 ## 1.2.0 (2026-03-05)
 
 ### 🚀 Features
