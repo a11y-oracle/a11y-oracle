@@ -141,7 +141,7 @@ let engine: SpeechEngine | null = null;
 let orchestrator: A11yOrchestrator | null = null;
 let autFrameId: string | null = null;
 let autContextId: number | null = null;
-let autIframeBounds: { x: number; y: number } | null = null;
+let autIframeBounds: { x: number; y: number; scale: number } | null = null;
 
 /**
  * Send a raw CDP command through Cypress's automation channel.
@@ -186,17 +186,22 @@ function createFrameAwareCDPAdapter(): CDPSessionLike {
       // Runtime.evaluate runs inside the AUT iframe (via contextId), so
       // getBoundingClientRect() returns iframe-relative coords. But
       // Page.captureScreenshot clips relative to the top-level viewport.
+      // Cypress scales the AUT iframe via a CSS transform on a wrapper
+      // element, so we must also apply the display scale factor.
       if (
         method === 'Page.captureScreenshot' &&
         p['clip'] &&
         autIframeBounds &&
-        (autIframeBounds.x !== 0 || autIframeBounds.y !== 0)
+        (autIframeBounds.x !== 0 || autIframeBounds.y !== 0 || autIframeBounds.scale !== 1)
       ) {
         const clip = p['clip'] as Record<string, number>;
+        const s = autIframeBounds.scale;
         p['clip'] = {
-          ...clip,
-          x: clip.x + autIframeBounds.x,
-          y: clip.y + autIframeBounds.y,
+          x: autIframeBounds.x + clip.x * s,
+          y: autIframeBounds.y + clip.y * s,
+          width: clip.width * s,
+          height: clip.height * s,
+          scale: (clip.scale || 1) / s,
         };
       }
 
@@ -261,17 +266,23 @@ async function findAUTContextId(frameId: string): Promise<number | null> {
 }
 
 /**
- * Get the AUT iframe's position in the top-level viewport.
+ * Get the AUT iframe's position and display scale in the top-level viewport.
  *
  * Runs `Runtime.evaluate` in the top-level context (without `contextId`)
  * to find the AUT iframe and return its bounding rect origin. Adds
  * `clientLeft`/`clientTop` to account for any iframe border.
  *
+ * Also computes the display scale by comparing the iframe's rendered width
+ * (`getBoundingClientRect().width`) to its CSS content width (`clientWidth`).
+ * Cypress scales the AUT iframe via a CSS transform on an ancestor wrapper
+ * element (not the iframe itself), so the iframe's own computed transform
+ * is `none`. The empirical width comparison correctly detects the scale.
+ *
  * Used to translate iframe-relative coordinates from
  * `getBoundingClientRect()` to viewport-absolute coordinates for
  * `Page.captureScreenshot` clips.
  */
-async function getAUTIframeBounds(): Promise<{ x: number; y: number }> {
+async function getAUTIframeBounds(): Promise<{ x: number; y: number; scale: number }> {
   const result = (await sendCDP('Runtime.evaluate', {
     expression: `(() => {
       const iframes = document.querySelectorAll('iframe');
@@ -279,13 +290,19 @@ async function getAUTIframeBounds(): Promise<{ x: number; y: number }> {
         const src = f.getAttribute('src') || f.src || '';
         if (src && !src.includes('/__/') && !src.includes('__cypress') && src !== 'about:blank') {
           const rect = f.getBoundingClientRect();
-          return { x: rect.x + f.clientLeft, y: rect.y + f.clientTop };
+          const contentWidth = f.clientWidth + 2 * f.clientLeft;
+          const scale = contentWidth > 0 ? rect.width / contentWidth : 1;
+          return {
+            x: rect.x + f.clientLeft * scale,
+            y: rect.y + f.clientTop * scale,
+            scale: scale,
+          };
         }
       }
-      return { x: 0, y: 0 };
+      return { x: 0, y: 0, scale: 1 };
     })()`,
     returnByValue: true,
-  })) as { result: { value: { x: number; y: number } } };
+  })) as { result: { value: { x: number; y: number; scale: number } } };
   return result.result.value;
 }
 
@@ -374,6 +391,73 @@ async function dispatchKey(key: string): Promise<void> {
     windowsVirtualKeyCode: keyDef.keyCode,
     nativeVirtualKeyCode: keyDef.keyCode,
   });
+}
+
+// ── Public API ─────────────────────────────────────────────────────
+
+/**
+ * Create a ready-to-use CDP adapter for the Cypress AUT iframe.
+ *
+ * Encapsulates all the CDP plumbing needed to use
+ * `@a11y-oracle/axe-bridge`'s `resolveAllIncomplete()` in a custom
+ * Cypress command:
+ *
+ * 1. Enables required CDP domains (`DOM.enable`, `Page.enable`)
+ * 2. Discovers the AUT frame ID from `Page.getFrameTree`
+ * 3. Creates an isolated world execution context in the AUT frame
+ * 4. Detects iframe position and CSS transform scale
+ * 5. Returns a `CDPSessionLike` adapter with scale-aware coordinate
+ *    translation for `Page.captureScreenshot`
+ *
+ * @example
+ * ```typescript
+ * import { createCypressCDPAdapter } from '@a11y-oracle/cypress-plugin';
+ * import { resolveAllIncomplete } from '@a11y-oracle/axe-bridge';
+ *
+ * const cdp = await createCypressCDPAdapter();
+ * const resolved = await resolveAllIncomplete(cdp, axeResults, options);
+ * ```
+ */
+export async function createCypressCDPAdapter(): Promise<CDPSessionLike> {
+  await sendCDP('DOM.enable');
+  await sendCDP('Page.enable');
+
+  const frameId = await findAUTFrameId();
+  const contextId = frameId ? await findAUTContextId(frameId) : null;
+  const iframeBounds = await getAUTIframeBounds();
+
+  return {
+    send: (method: string, params?: Record<string, unknown>) => {
+      const p = { ...params };
+
+      if (method === 'Accessibility.getFullAXTree' && frameId) {
+        p['frameId'] = frameId;
+      }
+
+      if (method === 'Runtime.evaluate' && contextId !== null) {
+        p['contextId'] = contextId;
+      }
+
+      if (
+        method === 'Page.captureScreenshot' &&
+        p['clip'] &&
+        iframeBounds &&
+        (iframeBounds.x !== 0 || iframeBounds.y !== 0 || iframeBounds.scale !== 1)
+      ) {
+        const clip = p['clip'] as Record<string, number>;
+        const s = iframeBounds.scale;
+        p['clip'] = {
+          x: iframeBounds.x + clip.x * s,
+          y: iframeBounds.y + clip.y * s,
+          width: clip.width * s,
+          height: clip.height * s,
+          scale: (clip.scale || 1) / s,
+        };
+      }
+
+      return sendCDP(method, p);
+    },
+  };
 }
 
 // ── Commands ───────────────────────────────────────────────────────

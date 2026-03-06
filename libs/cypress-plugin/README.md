@@ -412,6 +412,30 @@ Node-side function (not a Cypress command). Call inside `setupNodeEvents()` to r
 import { setupOracleReporting } from '@a11y-oracle/cypress-plugin';
 ```
 
+### CDP Adapter
+
+#### `createCypressCDPAdapter()`
+
+Create a ready-to-use `CDPSessionLike` adapter for custom integrations. This is useful when you need to call `@a11y-oracle/axe-bridge`'s `resolveAllIncomplete()` directly instead of using the built-in Cypress commands.
+
+The function encapsulates all the CDP plumbing:
+- Enables `DOM.enable` and `Page.enable` CDP domains
+- Discovers the AUT frame ID from `Page.getFrameTree`
+- Creates an isolated world execution context in the AUT frame
+- Detects iframe position and CSS transform scale
+- Returns a `CDPSessionLike` adapter with scale-aware `Page.captureScreenshot` coordinate translation
+
+```typescript
+import { createCypressCDPAdapter } from '@a11y-oracle/cypress-plugin';
+import { resolveAllIncomplete } from '@a11y-oracle/axe-bridge';
+
+// In your custom Cypress command:
+cy.wrap(null).then(async () => {
+  const cdp = await createCypressCDPAdapter();
+  const resolved = await resolveAllIncomplete(cdp, axeResults, options);
+});
+```
+
 ### Lifecycle
 
 #### `cy.disposeA11yOracle()`
@@ -425,6 +449,7 @@ Types are re-exported from `@a11y-oracle/core-engine` and `@a11y-oracle/audit-fo
 ```typescript
 import type {
   // Core engine types
+  CDPSessionLike,
   SpeechResult,
   A11yState,
   A11yFocusedElement,
@@ -459,7 +484,7 @@ Cypress runs the app under test (AUT) inside an iframe within its runner page. T
 
 3. **Isolated execution context** — For `Runtime.evaluate` calls (focus indicator analysis, tab order, trap detection), the plugin creates an isolated world in the AUT frame via `Page.createIsolatedWorld`. This isolated world shares the same DOM (including `document.activeElement`, computed styles, etc.) but has its own JavaScript scope, ensuring evaluations target the AUT content.
 
-4. **Screenshot coordinate translation** — `getBoundingClientRect()` inside the AUT iframe returns iframe-relative coordinates, but `Page.captureScreenshot` clips from the top-level browser viewport. The plugin queries the AUT iframe's position in the viewport and offsets all screenshot clip coordinates accordingly. This ensures pixel-level analysis (color contrast, focus indicator diffing) captures the correct region.
+4. **Screenshot coordinate translation** — `getBoundingClientRect()` inside the AUT iframe returns iframe-relative coordinates, but `Page.captureScreenshot` clips from the top-level browser viewport. The plugin queries the AUT iframe's position in the viewport and offsets all screenshot clip coordinates accordingly. It also detects the CSS transform scale that Cypress applies to the AUT iframe wrapper (typically ~0.66x in headless Electron), and applies it to coordinates, dimensions, and the clip's `scale` property. This ensures pixel-level analysis (color contrast, focus indicator diffing) captures the correct region even when the AUT is rendered at a scaled size.
 
 5. **Focus management** — Before each keyboard event, the plugin uses `DOM.focus()` on the AUT iframe element so that `Input.dispatchKeyEvent` reaches the correct frame.
 

@@ -44,6 +44,7 @@ import './lib/commands.js';
 
 // Re-export types for consumer convenience
 export type {
+  CDPSessionLike,
   SpeechResult,
   SpeechEngineOptions,
   A11yState,
@@ -69,3 +70,6 @@ export type {
 
 // Node-side reporting setup
 export { setupOracleReporting } from './lib/reporting.js';
+
+// Reusable CDP adapter for custom integrations (e.g. axe-bridge resolveAllIncomplete)
+export { createCypressCDPAdapter } from './lib/commands.js';
