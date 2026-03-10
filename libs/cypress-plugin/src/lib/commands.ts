@@ -144,16 +144,64 @@ let autContextId: number | null = null;
 let autIframeBounds: { x: number; y: number; scale: number } | null = null;
 
 /**
+ * Cached isolated world state for reuse across init/dispose cycles.
+ *
+ * `Page.createIsolatedWorld` accumulates execution contexts that Chrome
+ * never garbage-collects during same-origin navigations. After ~16
+ * iterations the browser hangs on subsequent CDP calls. By caching the
+ * context ID and verifying it with a cheap `Runtime.evaluate` probe we
+ * avoid creating a new world when the previous one is still alive.
+ */
+let _cachedWorldFrameId: string | null = null;
+let _cachedWorldContextId: number | null = null;
+
+/** Timeout (ms) applied to every CDP call to surface hangs as errors. */
+const CDP_TIMEOUT_MS = 30_000;
+
+/**
+ * Wrap a promise with a timeout to prevent indefinite hangs.
+ */
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(
+        new Error(
+          `A11y-Oracle: CDP call "${label}" timed out after ${ms}ms`
+        )
+      );
+    }, ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+/**
  * Send a raw CDP command through Cypress's automation channel.
+ *
+ * Every call is guarded by a timeout so that accumulated isolated worlds
+ * or other browser-side issues surface as errors instead of silent hangs.
  */
 function sendCDP(
   command: string,
   params: Record<string, unknown> = {}
 ): Promise<any> {
-  return (Cypress as any).automation('remote:debugger:protocol', {
+  const raw = (Cypress as any).automation('remote:debugger:protocol', {
     command,
     params,
   });
+  return withTimeout(raw, CDP_TIMEOUT_MS, command);
 }
 
 /**
@@ -253,6 +301,30 @@ async function findAUTFrameId(): Promise<string | null> {
  * calls execute in the AUT, not the Cypress runner.
  */
 async function findAUTContextId(frameId: string): Promise<number | null> {
+  // Try to reuse the context that was handed off by the previous
+  // disposeA11yOracle() call. A lightweight Runtime.evaluate probe
+  // confirms the context is still alive (Chrome destroys isolated worlds
+  // on cross-origin navigation but may preserve them for same-origin).
+  // Always consume (clear) the cache regardless of outcome.
+  const cachedCtx = _cachedWorldContextId;
+  const cachedFrame = _cachedWorldFrameId;
+  _cachedWorldContextId = null;
+  _cachedWorldFrameId = null;
+
+  if (cachedCtx !== null && cachedFrame === frameId) {
+    try {
+      await sendCDP('Runtime.evaluate', {
+        expression: '1',
+        contextId: cachedCtx,
+        returnByValue: true,
+      });
+      // Context is still valid — reuse it.
+      return cachedCtx;
+    } catch {
+      // Context was destroyed (frame navigated), fall through to create.
+    }
+  }
+
   try {
     const result = await sendCDP('Page.createIsolatedWorld', {
       frameId,
@@ -700,6 +772,13 @@ Cypress.Commands.add('disposeA11yOracle', () => {
       // Engine was already disabled via orchestrator (same CDP session)
       engine = null;
     }
+    // Hand off the current isolated world to the cache so the next
+    // initA11yOracle() can reuse it instead of leaking a new one.
+    // CDP provides no API to destroy an isolated world; reuse is
+    // the only way to prevent accumulation. The cache is consumed
+    // (cleared) at the start of the next findAUTContextId() call.
+    _cachedWorldContextId = autContextId;
+    _cachedWorldFrameId = autFrameId;
     autFrameId = null;
     autContextId = null;
     autIframeBounds = null;
