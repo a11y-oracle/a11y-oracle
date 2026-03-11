@@ -1,3 +1,7 @@
+## 1.3.1 (2026-03-11)
+
+This was a version bump only for axe-bridge to align it with other projects, there were no code changes.
+
 ## 1.3.0 (2026-03-06)
 
 This was a version bump only for axe-bridge to align it with other projects, there were no code changes.

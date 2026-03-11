@@ -1,3 +1,14 @@
+## 1.3.1 (2026-03-11)
+
+### 🩹 Fixes
+
+- **cypress-plugin:** prevent isolated world accumulation causing hang after ~16 tests ([#14](https://github.com/a11y-oracle/a11y-oracle/issues/14))
+
+### ❤️ Thank You
+
+- Claude Opus 4.6
+- Preston Lamb @pjlamb12
+
 ## 1.3.0 (2026-03-06)
 
 ### 🚀 Features
