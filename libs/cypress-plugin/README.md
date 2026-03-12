@@ -29,6 +29,8 @@ npm install -D @a11y-oracle/cypress-plugin @a11y-oracle/core-engine cypress
 
 > **Chrome/Chromium only.** The plugin uses CDP, which is only available in Chrome-family browsers.
 
+> **⚠️ Stability Notice — Playwright recommended.** The Cypress plugin is functional but has known stability constraints with large test suites. We recommend using [`@a11y-oracle/playwright-plugin`](../playwright-plugin/README.md) for the most reliable experience. See [Known Limitations](#known-limitations) below for details.
+
 ## Setup
 
 ### 1. Import Commands
@@ -512,6 +514,22 @@ If you need types in your test files without importing the support file:
 ```typescript
 /// <reference types="@a11y-oracle/cypress-plugin" />
 ```
+
+## Known Limitations
+
+### CDP Resource Accumulation in Long Test Suites
+
+Cypress runs the application under test (AUT) inside an iframe within its runner page. To interact with the AUT's accessibility tree, the plugin must create an **isolated execution world** in the AUT frame via `Page.createIsolatedWorld` on every `initA11yOracle()` call. Unlike Playwright — which provides native, first-class CDP sessions — Cypress's iframe architecture means these isolated worlds accumulate browser-side resources that Chrome does not fully reclaim, even after `disposeA11yOracle()` cleans up its own references.
+
+**What this means in practice:**
+
+- Test suites with many spec files or many tests per file may experience increasing memory pressure over the course of a run.
+- In v1.3.0 and earlier, this caused a deterministic hang after approximately 16 `init`/`dispose` cycles, because `Accessibility.getFullAXTree` would stall when traversing nodes across all accumulated contexts ([#14](https://github.com/a11y-oracle/a11y-oracle/issues/14)).
+- v1.3.1 mitigated the hang by properly destroying isolated worlds on dispose, but the underlying architectural constraint — that Cypress proxies all CDP calls through its runner and manages frame contexts differently than Playwright — remains.
+
+**Recommendation:** If you are starting a new project or have the flexibility to choose your E2E framework, use [`@a11y-oracle/playwright-plugin`](../playwright-plugin/README.md). Playwright provides direct CDP session access without iframe indirection, making it inherently more stable and performant for A11y-Oracle's CDP-heavy workflow.
+
+If you need to stay on Cypress, the plugin is fully functional — just be aware of these constraints for very large suites.
 
 ## Troubleshooting
 

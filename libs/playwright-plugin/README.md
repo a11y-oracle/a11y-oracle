@@ -2,6 +2,8 @@
 
 Playwright integration for A11y-Oracle. Provides a test fixture and wrapper class that reads the browser's Accessibility Tree via Chrome DevTools Protocol, dispatches native keyboard events, and analyzes visual focus indicators.
 
+> **✅ Recommended plugin.** Playwright provides direct, first-class CDP session access, making this the most stable and performant integration for A11y-Oracle. If you have a choice of E2E framework, this is the one to use.
+
 ```typescript
 import { test, expect } from '@a11y-oracle/playwright-plugin';
 

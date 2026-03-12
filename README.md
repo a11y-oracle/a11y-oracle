@@ -136,6 +136,8 @@ test('modal does not trap focus', async ({ page, a11y }) => {
 
 ### With Cypress
 
+> **⚠️ Playwright is recommended over Cypress.** The Cypress plugin is functional but has known stability issues with long test suites due to how Cypress manages CDP sessions through its iframe architecture. Repeated `initA11yOracle()`/`disposeA11yOracle()` cycles accumulate browser resources (isolated execution worlds) that Chrome does not fully release, which can cause hangs or memory pressure after many tests. A mitigation was added in v1.3.1 ([#14](https://github.com/a11y-oracle/a11y-oracle/issues/14)), but the underlying architectural constraints remain. For the most reliable experience, use the [Playwright plugin](libs/playwright-plugin/README.md).
+
 ```bash
 npm install @a11y-oracle/cypress-plugin
 ```
